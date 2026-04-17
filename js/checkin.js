@@ -143,11 +143,12 @@ async function doCheckin() {
       }
       showSuccess(empId, result, empName);
     } else if (result.error && result.error.indexOf('등록되지 않은 기기') >= 0) {
-      // 서버에서 토큰 삭제됨 → localStorage 초기화 후 새로고침
+      // 서버에서 토큰 삭제됨 → localStorage 초기화 + 자동 새로고침
       localStorage.removeItem('fp_checkin_token');
       localStorage.removeItem('fp_checkin_empId');
       localStorage.removeItem('fp_checkin_empName');
-      showError('기기 등록이 초기화되었습니다', 'QR을 다시 스캔하면 사번을 입력할 수 있습니다.');
+      location.reload();
+      return;
     } else {
       showError(result.error || '출근 처리 실패', '다시 시도해주세요.');
     }
