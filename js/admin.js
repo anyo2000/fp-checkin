@@ -1,6 +1,14 @@
 // admin.js — 관리자 페이지
 
+// URL 파라미터에서 지점 코드 추출
+const BRANCH = new URLSearchParams(window.location.search).get('branch') || '';
+
 (function () {
+  // 지점명 표시
+  if (BRANCH) {
+    document.getElementById('pageTitle').textContent = BRANCH + ' — 출근 관리';
+  }
+
   // 오늘 날짜 표시
   const today = new Date();
   const dateStr =
@@ -22,6 +30,16 @@
 })();
 
 let todayData = [];
+
+/**
+ * branch 기준으로 데이터 필터링
+ */
+function filterByBranch(records) {
+  if (!BRANCH) return records; // 파라미터 없으면 전체
+  return records.filter(function (r) {
+    return r.branch === BRANCH;
+  });
+}
 
 /**
  * 탭 전환
@@ -48,16 +66,15 @@ function switchTab(tabName) {
  */
 async function loadToday() {
   if (!CONFIG.GAS_URL) {
-    // 테스트 데이터
-    todayData = generateTestData();
+    todayData = filterByBranch(generateTestData());
     renderToday(todayData);
     return;
   }
 
   try {
-    const res = await fetch(
-      CONFIG.GAS_URL + '?action=today&date=' + document.getElementById('todayDate').textContent
-    );
+    var url = CONFIG.GAS_URL + '?action=today&date=' + document.getElementById('todayDate').textContent;
+    if (BRANCH) url += '&branch=' + encodeURIComponent(BRANCH);
+    const res = await fetch(url);
     todayData = await res.json();
     renderToday(todayData);
   } catch (err) {
@@ -149,13 +166,14 @@ async function loadMonthly() {
   if (!month) return;
 
   if (!CONFIG.GAS_URL) {
-    // 테스트 데이터
     renderMonthly(generateMonthlyTestData());
     return;
   }
 
   try {
-    var res = await fetch(CONFIG.GAS_URL + '?action=summary&month=' + month);
+    var url = CONFIG.GAS_URL + '?action=summary&month=' + month;
+    if (BRANCH) url += '&branch=' + encodeURIComponent(BRANCH);
+    var res = await fetch(url);
     var data = await res.json();
     renderMonthly(data);
   } catch (err) {
@@ -210,7 +228,9 @@ async function loadAlerts() {
   }
 
   try {
-    var res = await fetch(CONFIG.GAS_URL + '?action=alerts');
+    var url = CONFIG.GAS_URL + '?action=alerts';
+    if (BRANCH) url += '&branch=' + encodeURIComponent(BRANCH);
+    var res = await fetch(url);
     var data = await res.json();
     renderAlerts(data);
   } catch (err) {
@@ -268,36 +288,39 @@ function downloadCSV() {
 // ========== 테스트 데이터 생성 ==========
 
 function generateTestData() {
-  var testEmps = ['1001234', '1001235', '1001236', '1001237', '1001238', '1001239'];
+  var branches = [
+    { code: 'jungbalsan_sfp', emps: ['2001001', '2001002', '2001003', '2001004'] },
+    { code: 'sinjooan', emps: ['2002001', '2002002', '2002003'] },
+  ];
   var records = [];
 
-  testEmps.forEach(function (empId, i) {
-    // 출근
-    var hour = 8 + Math.floor(Math.random() * 2);
-    var min = Math.floor(Math.random() * 60);
-    var time = String(hour).padStart(2, '0') + ':' + String(min).padStart(2, '0');
-    records.push({
-      timestamp: Date.now(),
-      empId: empId,
-      type: '출근',
-      time: time,
-      morning: hour < 9 || (hour === 9 && min === 0),
-      branch: 'gangnam',
-    });
-
-    // 일부는 귀소
-    if (i % 2 === 0) {
-      var rHour = 16 + Math.floor(Math.random() * 3);
-      var rMin = Math.floor(Math.random() * 60);
+  branches.forEach(function (b) {
+    b.emps.forEach(function (empId, i) {
+      var hour = 8 + Math.floor(Math.random() * 2);
+      var min = Math.floor(Math.random() * 60);
+      var time = String(hour).padStart(2, '0') + ':' + String(min).padStart(2, '0');
       records.push({
         timestamp: Date.now(),
         empId: empId,
-        type: '귀소',
-        time: String(rHour).padStart(2, '0') + ':' + String(rMin).padStart(2, '0'),
-        morning: false,
-        branch: 'gangnam',
+        type: '출근',
+        time: time,
+        morning: hour < 9 || (hour === 9 && min === 0),
+        branch: b.code,
       });
-    }
+
+      if (i % 2 === 0) {
+        var rHour = 16 + Math.floor(Math.random() * 3);
+        var rMin = Math.floor(Math.random() * 60);
+        records.push({
+          timestamp: Date.now(),
+          empId: empId,
+          type: '귀소',
+          time: String(rHour).padStart(2, '0') + ':' + String(rMin).padStart(2, '0'),
+          morning: false,
+          branch: b.code,
+        });
+      }
+    });
   });
 
   return records;

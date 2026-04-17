@@ -185,22 +185,23 @@ function handleCheckin(data) {
 
 function handleToday(params) {
   var date = params.date || todayString();
+  var branch = params.branch || '';
   var sheet = getLogSheet();
   var data = sheet.getDataRange().getValues();
   var records = [];
 
   for (var i = 1; i < data.length; i++) {
-    if (data[i][5] === date) {
-      records.push({
-        timestamp: data[i][0],
-        empId: data[i][1],
-        branch: data[i][2],
-        type: data[i][3],
-        time: data[i][4],
-        date: data[i][5],
-        morning: data[i][6],
-      });
-    }
+    if (data[i][5] !== date) continue;
+    if (branch && data[i][2] !== branch) continue;
+    records.push({
+      timestamp: data[i][0],
+      empId: data[i][1],
+      branch: data[i][2],
+      type: data[i][3],
+      time: data[i][4],
+      date: data[i][5],
+      morning: data[i][6],
+    });
   }
 
   return jsonOut(records);
@@ -208,6 +209,7 @@ function handleToday(params) {
 
 function handleSummary(params) {
   var month = params.month; // "2026-04"
+  var branch = params.branch || '';
   if (!month) return jsonOut([]);
 
   var sheet = getLogSheet();
@@ -218,6 +220,7 @@ function handleSummary(params) {
   for (var i = 1; i < data.length; i++) {
     var rowDate = data[i][5];
     if (!rowDate || !rowDate.startsWith(month)) continue;
+    if (branch && data[i][2] !== branch) continue;
 
     var empId = data[i][1];
     if (!byEmp[empId]) {
