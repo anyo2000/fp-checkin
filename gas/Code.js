@@ -125,6 +125,24 @@ function isInMorning(timeStr, startStr, endStr) {
   return timeStr >= startStr && timeStr <= endStr;
 }
 
+/**
+ * Sheets 셀 값 → HH:MM 문자열로 변환
+ * Sheets는 시간 셀을 Date 객체(1899-12-30T...)로 반환하므로 강제 변환 필요
+ */
+function toTimeHHMM(val) {
+  if (val instanceof Date || (typeof val === 'object' && val !== null && val.getHours)) {
+    var h = String(val.getHours()).padStart(2, '0');
+    var m = String(val.getMinutes()).padStart(2, '0');
+    return h + ':' + m;
+  }
+  var s = String(val).trim();
+  // HH:MM:SS → HH:MM
+  if (s.match(/^\d{2}:\d{2}:\d{2}$/)) return s.slice(0, 5);
+  // HH:MM 그대로
+  if (s.match(/^\d{2}:\d{2}$/)) return s;
+  return s;
+}
+
 // ========== 토큰 관리 ==========
 
 function getTokenSheet() {
@@ -275,11 +293,11 @@ function handleToday(params) {
     if (branch && data[i][2] !== branch) continue;
     records.push({
       timestamp: data[i][0],
-      empId: data[i][1],
+      empId: String(data[i][1]).trim(),
       branch: data[i][2],
       type: data[i][3],
-      time: data[i][4],
-      date: data[i][5],
+      time: toTimeHHMM(data[i][4]),
+      date: toDateString(data[i][5]),
       morning: data[i][6],
     });
   }
@@ -309,12 +327,13 @@ function handleSummary(params) {
     var emp = byEmp[empId];
 
     if (data[i][3] === '출근') {
-      emp.dates[rowDate] = true;
+      emp.dates[rowDateStr] = true;
       emp.checkinCount++;
       if (data[i][6]) emp.morningCount++;
 
       // 시간 → 분으로 변환
-      var timeParts = data[i][4].split(':');
+      var timeHHMM = toTimeHHMM(data[i][4]);
+      var timeParts = timeHHMM.split(':');
       emp.totalMinutes += parseInt(timeParts[0]) * 60 + parseInt(timeParts[1]);
     } else if (data[i][3] === '귀소') {
       emp.returnCount++;
