@@ -15,7 +15,7 @@ function getConfig(key) {
   var sheet = ss.getSheetByName('시스템설정');
   var data = sheet.getDataRange().getValues();
   for (var i = 1; i < data.length; i++) {
-    if (data[i][0] === key) return data[i][1];
+    if (String(data[i][0]).trim() === key) return String(data[i][1]).trim();
   }
   return null;
 }
@@ -133,8 +133,10 @@ function handleCheckin(data) {
   var now = new Date();
   var oneMinuteAgo = now.getTime() - 60000;
 
+  var empId = String(data.empId).trim();
+
   for (var i = allData.length - 1; i >= 1; i--) {
-    if (allData[i][1] === data.empId) {
+    if (String(allData[i][1]).trim() === empId) {
       var rowTime = new Date(allData[i][0]).getTime();
       if (rowTime > oneMinuteAgo) {
         return jsonOut({ success: false, error: '1분 이내 중복 스캔입니다' });
@@ -147,7 +149,7 @@ function handleCheckin(data) {
   var today = todayString();
   var scanCount = 0;
   for (var j = 1; j < allData.length; j++) {
-    if (allData[j][1] === data.empId && allData[j][5] === today) {
+    if (String(allData[j][1]).trim() === empId && allData[j][5] === today) {
       scanCount++;
     }
   }
@@ -162,7 +164,7 @@ function handleCheckin(data) {
   // 시트에 저장
   sheet.appendRow([
     now.toISOString(),   // timestamp
-    data.empId,          // empId
+    empId,               // empId
     data.branch || '',   // branch
     type,                // type
     time,                // time
