@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>관리자 - FP 출근 체크</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="admin-page">
+    <h1>FP 출근 관리</h1>
+
+    <!-- 탭 -->
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('today')">오늘 현황</button>
+      <button class="tab-btn" onclick="switchTab('monthly')">월간 리포트</button>
+      <button class="tab-btn" onclick="switchTab('alert')">이상 패턴</button>
+    </div>
+
+    <!-- 오늘 현황 -->
+    <div id="tab-today">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="todayTotal">-</div>
+          <div class="stat-label">오늘 출근</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="todayMorning">-</div>
+          <div class="stat-label">조회 참석</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="todayReturn">-</div>
+          <div class="stat-label">귀소</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="todayAvgTime">-</div>
+          <div class="stat-label">평균 출근 시간</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 14px; color: #6b7280;" id="todayDate"></span>
+        <button class="tab-btn" onclick="downloadCSV()">CSV 다운로드</button>
+      </div>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>사번</th>
+            <th>출근</th>
+            <th>귀소</th>
+            <th>최종퇴실</th>
+            <th>조회</th>
+          </tr>
+        </thead>
+        <tbody id="todayTableBody">
+          <tr><td colspan="5" style="text-align: center; color: #9ca3af;">데이터 로딩 중...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 월간 리포트 -->
+    <div id="tab-monthly" style="display: none;">
+      <div style="margin-bottom: 16px;">
+        <input type="month" id="monthPicker" class="input-field" style="max-width: 200px; text-align: left; letter-spacing: normal; font-size: 16px;">
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="monthlyAvgDays">-</div>
+          <div class="stat-label">평균 출근일</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="monthlyAvgTime">-</div>
+          <div class="stat-label">평균 출근 시간</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="monthlyMorningRate">-</div>
+          <div class="stat-label">조회 참석률</div>
+        </div>
+      </div>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>사번</th>
+            <th>출근일</th>
+            <th>평균 출근</th>
+            <th>조회 참석률</th>
+            <th>귀소율</th>
+          </tr>
+        </thead>
+        <tbody id="monthlyTableBody">
+          <tr><td colspan="5" style="text-align: center; color: #9ca3af;">월을 선택하세요</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 이상 패턴 -->
+    <div id="tab-alert" style="display: none;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>유형</th>
+            <th>사번</th>
+            <th>상세</th>
+          </tr>
+        </thead>
+        <tbody id="alertTableBody">
+          <tr><td colspan="3" style="text-align: center; color: #9ca3af;">데이터 로딩 중...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

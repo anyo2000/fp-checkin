@@ -1,0 +1,422 @@
+/* fp-checkin 공용 스타일 — 모바일 우선 */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #f5f5f5;
+  color: #333;
+  min-height: 100vh;
+}
+
+/* ========== 공용 컴포넌트 ========== */
+
+.container {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.card {
+  background: white;
+  border-radius: 16px;
+  padding: 32px 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  text-align: center;
+}
+
+.btn {
+  display: inline-block;
+  padding: 16px 48px;
+  border: none;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+}
+
+.btn-primary {
+  background: #2563eb;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #1d4ed8;
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+.btn-primary:disabled {
+  background: #93c5fd;
+  cursor: not-allowed;
+}
+
+.input-field {
+  width: 100%;
+  padding: 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 20px;
+  text-align: center;
+  letter-spacing: 4px;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input-field:focus {
+  border-color: #2563eb;
+}
+
+.label {
+  display: block;
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 8px;
+  text-align: left;
+}
+
+/* ========== display.html — 태블릿 QR 화면 ========== */
+
+.display-page {
+  background: #0f172a;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 40px;
+}
+
+.display-page .branch-name {
+  font-size: 24px;
+  font-weight: 300;
+  margin-bottom: 8px;
+  color: #94a3b8;
+}
+
+.display-page .title {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 40px;
+}
+
+.qr-wrapper {
+  background: white;
+  border-radius: 24px;
+  padding: 24px;
+  margin-bottom: 32px;
+}
+
+.qr-wrapper canvas,
+.qr-wrapper img {
+  display: block;
+}
+
+.timer-bar {
+  width: 280px;
+  height: 6px;
+  background: #334155;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.timer-bar-fill {
+  height: 100%;
+  background: #3b82f6;
+  border-radius: 3px;
+  transition: width 1s linear;
+}
+
+.timer-text {
+  font-size: 48px;
+  font-weight: 200;
+  color: #64748b;
+  margin-bottom: 16px;
+}
+
+.clock {
+  font-size: 64px;
+  font-weight: 100;
+  color: #475569;
+  margin-top: 24px;
+}
+
+.fullscreen-btn {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.fullscreen-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ========== checkin.html — FP 출석 페이지 ========== */
+
+.checkin-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.checkin-page .logo {
+  font-size: 48px;
+  margin-bottom: 8px;
+}
+
+.checkin-page h1 {
+  font-size: 24px;
+  margin-bottom: 24px;
+  color: #1e293b;
+}
+
+.checkin-page .form-group {
+  margin-bottom: 24px;
+}
+
+/* 결과 화면 */
+.result {
+  display: none;
+  padding: 40px 20px;
+}
+
+.result.show {
+  display: block;
+}
+
+.result-icon {
+  font-size: 72px;
+  margin-bottom: 16px;
+}
+
+.result-message {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.result-time {
+  font-size: 48px;
+  font-weight: 200;
+  color: #2563eb;
+  margin-bottom: 8px;
+}
+
+.result-detail {
+  font-size: 16px;
+  color: #6b7280;
+}
+
+.result-error .result-message {
+  color: #dc2626;
+}
+
+/* 로딩 스피너 */
+.spinner {
+  display: none;
+  width: 48px;
+  height: 48px;
+  border: 4px solid #e5e7eb;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 24px auto;
+}
+
+.spinner.show {
+  display: block;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ========== admin.html — 관리자 페이지 ========== */
+
+.admin-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.admin-page h1 {
+  font-size: 24px;
+  margin-bottom: 24px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.stat-card .stat-value {
+  font-size: 36px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.stat-card .stat-label {
+  font-size: 14px;
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.data-table th {
+  background: #f8fafc;
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 600;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.data-table td {
+  padding: 12px 16px;
+  font-size: 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.data-table tr:last-child td {
+  border-bottom: none;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-green {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.badge-red {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.badge-yellow {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+.tab-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.tab-btn {
+  padding: 8px 20px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.tab-btn.active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+/* ========== index.html — 랜딩 ========== */
+
+.landing-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.landing-page .card {
+  max-width: 400px;
+  width: 100%;
+}
+
+.landing-page h1 {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.landing-page .subtitle {
+  color: #6b7280;
+  margin-bottom: 32px;
+}
+
+.landing-page .nav-links {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.nav-link {
+  display: block;
+  padding: 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  text-decoration: none;
+  color: #1e293b;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.nav-link:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.nav-link .nav-icon {
+  font-size: 24px;
+  margin-right: 12px;
+}
+
+.nav-link .nav-desc {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 400;
+}

@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>출근 QR</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+</head>
+<body>
+  <div class="display-page">
+    <button class="fullscreen-btn" onclick="toggleFullscreen()">전체화면</button>
+
+    <div class="branch-name" id="branchName">지점명</div>
+    <div class="title">출근 QR 스캔</div>
+
+    <div class="qr-wrapper">
+      <canvas id="qrCanvas" width="280" height="280"></canvas>
+    </div>
+
+    <div class="timer-bar">
+      <div class="timer-bar-fill" id="timerBarFill"></div>
+    </div>
+
+    <div class="timer-text" id="timerText">15</div>
+
+    <div class="clock" id="clock">--:--:--</div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/totp.js"></script>
+  <script src="js/display.js"></script>
+</body>
+</html>
