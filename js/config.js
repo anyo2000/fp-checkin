@@ -12,8 +12,8 @@ const CONFIG = {
   // GAS 웹앱 URL (Step 5에서 설정)
   GAS_URL: 'https://script.google.com/macros/s/AKfycbwubJQXv1MHFhYOJPE8qRKKxDb0ZgSPpaqq9DXW0QekxuocSBRcA0bCypdkwAm1Su8/exec',
 
-  // 체크인 페이지 베이스 URL (배포 후 설정)
-  BASE_URL: window.location.origin,
+  // 체크인 페이지 베이스 URL
+  BASE_URL: window.location.origin + '/fp-checkin',
 
   // 기본 조회 시간 (지점 설정 없을 때 폴백)
   DEFAULT_MORNING_START: '08:00',

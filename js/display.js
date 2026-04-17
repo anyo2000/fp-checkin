@@ -31,7 +31,7 @@
       // QR에 담을 URL 생성
       const checkinURL =
         CONFIG.BASE_URL +
-        '/fp-checkin/checkin.html?code=' +
+        '/checkin.html?code=' +
         code +
         '&t=' +
         timestamp +
