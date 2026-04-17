@@ -59,6 +59,19 @@ body {
   cursor: not-allowed;
 }
 
+.btn-danger {
+  background: #dc2626;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #b91c1c;
+}
+
+.btn-danger:active {
+  transform: scale(0.98);
+}
+
 .input-field {
   width: 100%;
   padding: 16px;
@@ -192,6 +205,28 @@ body {
 
 .checkin-page .form-group {
   margin-bottom: 24px;
+}
+
+/* 토큰 인증 모드 */
+.token-user-info {
+  margin-bottom: 24px;
+}
+
+.token-badge {
+  display: inline-block;
+  background: #dcfce7;
+  color: #166534;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 20px;
+  margin-bottom: 8px;
+}
+
+.token-empid {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1e293b;
 }
 
 /* 결과 화면 */

@@ -10,7 +10,21 @@
   <div class="checkin-page">
     <div class="card" style="width: 100%; max-width: 400px;">
 
-      <!-- 입력 폼 -->
+      <!-- 토큰 인증 모드 (등록된 기기) -->
+      <div id="tokenSection" style="display: none;">
+        <div class="logo">📋</div>
+        <h1>출근 체크</h1>
+        <div class="token-user-info">
+          <span class="token-badge">자동 인증</span>
+          <div class="token-empid" id="tokenEmpId"></div>
+        </div>
+
+        <button class="btn btn-primary" onclick="doCheckin()">
+          출근
+        </button>
+      </div>
+
+      <!-- 사번 입력 모드 (최초 등록) -->
       <div id="formSection">
         <div class="logo">📋</div>
         <h1>출근 체크</h1>

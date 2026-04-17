@@ -125,6 +125,54 @@ function isInMorning(timeStr, startStr, endStr) {
   return timeStr >= startStr && timeStr <= endStr;
 }
 
+// ========== 토큰 관리 ==========
+
+function getTokenSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('토큰');
+  if (!sheet) {
+    sheet = ss.insertSheet('토큰');
+    sheet.appendRow(['token', 'empId', 'branch', 'createdAt']);
+  }
+  return sheet;
+}
+
+/**
+ * 토큰으로 사번 조회. 없으면 null.
+ */
+function getEmpIdByToken(token) {
+  var sheet = getTokenSheet();
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim() === token) {
+      return String(data[i][1]).trim();
+    }
+  }
+  return null;
+}
+
+/**
+ * 해당 사번에 이미 등록된 토큰이 있는지 확인
+ */
+function hasTokenForEmpId(empId) {
+  var sheet = getTokenSheet();
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][1]).trim() === empId) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * 토큰 등록
+ */
+function registerToken(token, empId, branch) {
+  var sheet = getTokenSheet();
+  sheet.appendRow([token, empId, branch, new Date().toISOString()]);
+}
+
 // ========== 출석 처리 ==========
 
 function handleCheckin(data) {
@@ -137,13 +185,33 @@ function handleCheckin(data) {
     return jsonOut({ success: false, error: 'QR이 만료되었습니다' });
   }
 
+  var token = String(data.token || '').trim();
+  var empId = null;
+
+  if (data.isNewDevice) {
+    // 최초 등록 — 사번 직접 입력
+    empId = String(data.empId).trim();
+
+    // 이미 다른 기기에서 등록된 사번인지 확인
+    if (hasTokenForEmpId(empId)) {
+      return jsonOut({ success: false, error: '이미 다른 기기에 등록된 사번입니다. 관리자에게 문의하세요.' });
+    }
+
+    // 토큰 등록
+    registerToken(token, empId, data.branch || '');
+  } else {
+    // 기존 기기 — 토큰으로 사번 조회
+    empId = getEmpIdByToken(token);
+    if (!empId) {
+      return jsonOut({ success: false, error: '등록되지 않은 기기입니다. 사번을 다시 입력해주세요.' });
+    }
+  }
+
   // 중복 체크 (같은 사번 1분 이내)
   var sheet = getLogSheet();
   var allData = sheet.getDataRange().getValues();
   var now = new Date();
   var oneMinuteAgo = now.getTime() - 60000;
-
-  var empId = String(data.empId).trim();
 
   for (var i = allData.length - 1; i >= 1; i--) {
     if (String(allData[i][1]).trim() === empId) {
@@ -151,7 +219,7 @@ function handleCheckin(data) {
       if (rowTime > oneMinuteAgo) {
         return jsonOut({ success: false, error: '1분 이내 중복 스캔입니다' });
       }
-      break; // 최신 기록만 확인하면 됨
+      break;
     }
   }
 
@@ -331,6 +399,30 @@ function handleAlerts() {
   return jsonOut(alerts);
 }
 
+// ========== 관리자: 토큰 초기화 ==========
+
+function handleResetToken(data) {
+  var empId = String(data.empId).trim();
+  var requestBranch = String(data.branch || '').trim();
+
+  if (!empId) return jsonOut({ success: false, error: '사번을 지정해주세요' });
+  if (!requestBranch) return jsonOut({ success: false, error: '지점 정보가 없습니다' });
+
+  var sheet = getTokenSheet();
+  var allData = sheet.getDataRange().getValues();
+  var deleted = 0;
+
+  // 아래에서 위로 삭제 (행 번호 안 밀리게) — 같은 지점 소속만
+  for (var i = allData.length - 1; i >= 1; i--) {
+    if (String(allData[i][1]).trim() === empId && String(allData[i][2]).trim() === requestBranch) {
+      sheet.deleteRow(i + 1);
+      deleted++;
+    }
+  }
+
+  return jsonOut({ success: true, deleted: deleted });
+}
+
 // ========== HTTP 핸들러 ==========
 
 function doPost(e) {
@@ -339,6 +431,9 @@ function doPost(e) {
 
     if (data.action === 'checkin') {
       return handleCheckin(data);
+    }
+    if (data.action === 'resetToken') {
+      return handleResetToken(data);
     }
 
     return jsonOut({ success: false, error: 'Unknown action' });

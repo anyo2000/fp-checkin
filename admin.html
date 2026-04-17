@@ -15,6 +15,7 @@
       <button class="tab-btn active" onclick="switchTab('today')">오늘 현황</button>
       <button class="tab-btn" onclick="switchTab('monthly')">월간 리포트</button>
       <button class="tab-btn" onclick="switchTab('alert')">이상 패턴</button>
+      <button class="tab-btn" onclick="switchTab('token')">기기 초기화</button>
     </div>
 
     <!-- 오늘 현황 -->
@@ -110,6 +111,37 @@
           <tr><td colspan="3" style="text-align: center; color: #9ca3af;">데이터 로딩 중...</td></tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- 기기 초기화 -->
+    <div id="tab-token" style="display: none;">
+      <div class="card" style="max-width: 400px; text-align: left;">
+        <h2 style="font-size: 18px; margin-bottom: 4px;">기기 등록 초기화</h2>
+        <p style="font-size: 13px; color: #6b7280; margin-bottom: 20px;">
+          FP가 기기를 변경했을 때 기존 등록을 삭제합니다.<br>
+          이 지점 소속 사번만 삭제할 수 있습니다.
+        </p>
+
+        <div class="form-group">
+          <label class="label">사번 (7자리)</label>
+          <input
+            type="tel"
+            id="resetEmpId"
+            class="input-field"
+            placeholder="0000000"
+            maxlength="7"
+            inputmode="numeric"
+            autocomplete="off"
+            style="text-align: left; letter-spacing: 2px;"
+          >
+        </div>
+
+        <button class="btn btn-danger" onclick="resetToken()">
+          기기 등록 삭제
+        </button>
+
+        <div id="resetResult" style="margin-top: 16px; display: none;"></div>
+      </div>
     </div>
 
   </div>

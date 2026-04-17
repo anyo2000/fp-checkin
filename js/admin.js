@@ -56,6 +56,8 @@ function switchTab(tabName) {
     tabName === 'monthly' ? 'block' : 'none';
   document.getElementById('tab-alert').style.display =
     tabName === 'alert' ? 'block' : 'none';
+  document.getElementById('tab-token').style.display =
+    tabName === 'token' ? 'block' : 'none';
 
   if (tabName === 'monthly') loadMonthly();
   if (tabName === 'alert') loadAlerts();
@@ -283,6 +285,57 @@ function downloadCSV() {
   link.href = URL.createObjectURL(blob);
   link.download = 'checkin_' + document.getElementById('todayDate').textContent + '.csv';
   link.click();
+}
+
+// ========== 기기 초기화 ==========
+
+async function resetToken() {
+  var empId = document.getElementById('resetEmpId').value.trim();
+  var resultDiv = document.getElementById('resetResult');
+
+  if (!empId || empId.length !== 7) {
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = '<p style="color: #dc2626; font-size: 14px;">사번 7자리를 정확히 입력해주세요.</p>';
+    return;
+  }
+
+  if (!confirm('사번 ' + empId + '의 기기 등록을 삭제하시겠습니까?')) return;
+
+  if (!CONFIG.GAS_URL) {
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = '<p style="color: #166534; font-size: 14px;">✅ [테스트] 사번 ' + empId + ' 기기 등록 삭제 완료</p>';
+    document.getElementById('resetEmpId').value = '';
+    return;
+  }
+
+  try {
+    var res = await fetch(CONFIG.GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        action: 'resetToken',
+        empId: empId,
+        branch: BRANCH,
+      }),
+    });
+
+    var data = await res.json();
+    resultDiv.style.display = 'block';
+
+    if (data.success) {
+      if (data.deleted > 0) {
+        resultDiv.innerHTML = '<p style="color: #166534; font-size: 14px;">✅ 사번 ' + empId + ' 기기 등록 삭제 완료 (' + data.deleted + '건)</p>';
+        document.getElementById('resetEmpId').value = '';
+      } else {
+        resultDiv.innerHTML = '<p style="color: #854d0e; font-size: 14px;">해당 사번의 등록된 기기가 없습니다.</p>';
+      }
+    } else {
+      resultDiv.innerHTML = '<p style="color: #dc2626; font-size: 14px;">' + (data.error || '삭제 실패') + '</p>';
+    }
+  } catch (err) {
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = '<p style="color: #dc2626; font-size: 14px;">서버 연결 실패</p>';
+  }
 }
 
 // ========== 테스트 데이터 생성 ==========
