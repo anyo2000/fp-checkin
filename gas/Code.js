@@ -96,6 +96,16 @@ function getLogSheet() {
   return SpreadsheetApp.getActiveSpreadsheet().getSheetByName('출석로그');
 }
 
+function toDateString(val) {
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, 'Asia/Seoul', 'yyyy-MM-dd');
+  }
+  if (typeof val === 'object' && val !== null && val.getFullYear) {
+    return Utilities.formatDate(val, 'Asia/Seoul', 'yyyy-MM-dd');
+  }
+  return String(val).trim();
+}
+
 function todayString() {
   var now = new Date();
   var y = now.getFullYear();
@@ -149,11 +159,7 @@ function handleCheckin(data) {
   var today = todayString();
   var scanCount = 0;
   for (var j = 1; j < allData.length; j++) {
-    var rowDate = allData[j][5];
-    if (rowDate instanceof Date) {
-      rowDate = Utilities.formatDate(rowDate, 'Asia/Seoul', 'yyyy-MM-dd');
-    }
-    if (String(allData[j][1]).trim() === empId && String(rowDate) === today) {
+    if (String(allData[j][1]).trim() === empId && toDateString(allData[j][5]) === today) {
       scanCount++;
     }
   }
@@ -197,11 +203,7 @@ function handleToday(params) {
   var records = [];
 
   for (var i = 1; i < data.length; i++) {
-    var rowDate = data[i][5];
-    if (rowDate instanceof Date) {
-      rowDate = Utilities.formatDate(rowDate, 'Asia/Seoul', 'yyyy-MM-dd');
-    }
-    if (String(rowDate) !== date) continue;
+    if (toDateString(data[i][5]) !== date) continue;
     if (branch && data[i][2] !== branch) continue;
     records.push({
       timestamp: data[i][0],
@@ -228,11 +230,8 @@ function handleSummary(params) {
   // 사번별 집계
   var byEmp = {};
   for (var i = 1; i < data.length; i++) {
-    var rowDate = data[i][5];
-    if (rowDate instanceof Date) {
-      rowDate = Utilities.formatDate(rowDate, 'Asia/Seoul', 'yyyy-MM-dd');
-    }
-    if (!rowDate || !String(rowDate).startsWith(month)) continue;
+    var rowDateStr = toDateString(data[i][5]);
+    if (!rowDateStr || !rowDateStr.startsWith(month)) continue;
     if (branch && data[i][2] !== branch) continue;
 
     var empId = data[i][1];
