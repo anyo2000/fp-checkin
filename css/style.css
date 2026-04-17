@@ -223,10 +223,17 @@ body {
   margin-bottom: 8px;
 }
 
-.token-empid {
-  font-size: 20px;
-  font-weight: 600;
+.token-empname {
+  font-size: 24px;
+  font-weight: 700;
   color: #1e293b;
+  margin-bottom: 4px;
+}
+
+.token-empid {
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
 }
 
 /* 결과 화면 */

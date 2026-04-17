@@ -16,7 +16,8 @@
         <h1>출근 체크</h1>
         <div class="token-user-info">
           <span class="token-badge">자동 인증</span>
-          <div class="token-empid" id="tokenEmpId"></div>
+          <div class="token-empname" id="tokenEmpName"></div>
+        <div class="token-empid" id="tokenEmpId"></div>
         </div>
 
         <button class="btn btn-primary" onclick="doCheckin()">
@@ -39,6 +40,19 @@
             maxlength="10"
             inputmode="numeric"
             autocomplete="off"
+          >
+        </div>
+
+        <div class="form-group">
+          <label class="label">이름</label>
+          <input
+            type="text"
+            id="empName"
+            class="input-field"
+            placeholder="홍길동"
+            maxlength="10"
+            autocomplete="off"
+            style="letter-spacing: normal;"
           >
         </div>
 

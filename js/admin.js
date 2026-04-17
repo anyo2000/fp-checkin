@@ -3,10 +3,20 @@
 // URL 파라미터에서 지점 코드 추출
 const BRANCH = new URLSearchParams(window.location.search).get('branch') || '';
 
+// 지점 코드 → 한글 이름 매핑
+var BRANCH_NAMES = {
+  'jungbalsan_sfp': '정발산SFP',
+  'sinjooan': '신주안지점',
+};
+
+function branchDisplayName(code) {
+  return BRANCH_NAMES[code] || code;
+}
+
 (function () {
   // 지점명 표시
   if (BRANCH) {
-    document.getElementById('pageTitle').textContent = BRANCH + ' — 출근 관리';
+    document.getElementById('pageTitle').textContent = branchDisplayName(BRANCH) + ' — 출근 관리';
   }
 
   // 오늘 날짜 표시
@@ -125,7 +135,7 @@ function renderToday(records) {
   const byEmp = {};
   records.forEach(function (r) {
     if (!byEmp[r.empId]) {
-      byEmp[r.empId] = { checkin: null, returns: [], lastScan: null, morning: false };
+      byEmp[r.empId] = { name: r.name || '', checkin: null, returns: [], lastScan: null, morning: false };
     }
     const emp = byEmp[r.empId];
     var t = formatTime(r.time);
@@ -168,7 +178,7 @@ function renderToday(records) {
   const tbody = document.getElementById('todayTableBody');
   if (empIds.length === 0) {
     tbody.innerHTML =
-      '<tr><td colspan="5" style="text-align:center;color:#9ca3af;">오늘 출석 데이터 없음</td></tr>';
+      '<tr><td colspan="6" style="text-align:center;color:#9ca3af;">오늘 출석 데이터 없음</td></tr>';
     return;
   }
 
@@ -183,6 +193,7 @@ function renderToday(records) {
         : '<span class="badge badge-red">불참</span>';
       return (
         '<tr>' +
+        '<td>' + (emp.name || '-') + '</td>' +
         '<td>' + id + '</td>' +
         '<td>' + (emp.checkin || '-') + '</td>' +
         '<td>' + (emp.returns.length > 0 ? emp.returns[emp.returns.length - 1] : '-') + '</td>' +
@@ -223,7 +234,7 @@ async function loadMonthly() {
 function renderMonthly(summaries) {
   if (!summaries || summaries.length === 0) {
     document.getElementById('monthlyTableBody').innerHTML =
-      '<tr><td colspan="5" style="text-align:center;color:#9ca3af;">데이터 없음</td></tr>';
+      '<tr><td colspan="6" style="text-align:center;color:#9ca3af;">데이터 없음</td></tr>';
     return;
   }
 
@@ -243,6 +254,7 @@ function renderMonthly(summaries) {
     .map(function (r) {
       return (
         '<tr>' +
+        '<td>' + (r.name || '-') + '</td>' +
         '<td>' + r.empId + '</td>' +
         '<td>' + r.days + '일</td>' +
         '<td>' + (r.avgTime || '-') + '</td>' +

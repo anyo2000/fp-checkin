@@ -15,10 +15,13 @@
   var token = localStorage.getItem('fp_checkin_token');
   var savedEmpId = localStorage.getItem('fp_checkin_empId');
 
+  var savedEmpName = localStorage.getItem('fp_checkin_empName');
+
   if (token && savedEmpId) {
     // 등록된 기기 → 토큰 모드
     document.getElementById('formSection').style.display = 'none';
     document.getElementById('tokenSection').style.display = 'block';
+    document.getElementById('tokenEmpName').textContent = savedEmpName || '';
     document.getElementById('tokenEmpId').textContent = '사번 ' + savedEmpId;
   } else {
     // 최초 접속 → 사번 입력 모드
@@ -62,12 +65,18 @@ async function doCheckin() {
     // 토큰 모드 — localStorage에서 사번 가져옴
     empId = localStorage.getItem('fp_checkin_empId');
   } else {
-    // 최초 등록 — 사번 입력값
+    // 최초 등록 — 사번 + 이름 입력
     var empIdInput = document.getElementById('empId');
+    var empNameInput = document.getElementById('empName');
     empId = empIdInput.value.trim();
+    var empName = empNameInput.value.trim();
 
     if (!empId || empId.length < 3) {
       showFieldError('사번을 입력해주세요');
+      return;
+    }
+    if (!empName) {
+      showFieldError('이름을 입력해주세요');
       return;
     }
 
@@ -91,14 +100,17 @@ async function doCheckin() {
   // 로딩 표시
   showLoading();
 
+  var empName = isNewDevice ? document.getElementById('empName').value.trim() : (localStorage.getItem('fp_checkin_empName') || '');
+
   // GAS 미연결 — 로컬 테스트 모드
   if (!CONFIG.GAS_URL) {
-    console.log('[테스트 모드] 출근 데이터:', { empId, token: token.slice(0, 8) + '...', branch });
+    console.log('[테스트 모드] 출근 데이터:', { empId, empName, token: token.slice(0, 8) + '...', branch });
     if (isNewDevice) {
       localStorage.setItem('fp_checkin_token', token);
       localStorage.setItem('fp_checkin_empId', empId);
+      localStorage.setItem('fp_checkin_empName', empName);
     }
-    setTimeout(function () { showSuccess(empId); }, 1000);
+    setTimeout(function () { showSuccess(empId, null, empName); }, 1000);
     return;
   }
 
@@ -110,6 +122,7 @@ async function doCheckin() {
       body: JSON.stringify({
         action: 'checkin',
         empId: empId,
+        empName: empName,
         token: token,
         isNewDevice: isNewDevice,
         code: code,
@@ -126,8 +139,9 @@ async function doCheckin() {
       if (isNewDevice) {
         localStorage.setItem('fp_checkin_token', token);
         localStorage.setItem('fp_checkin_empId', empId);
+        localStorage.setItem('fp_checkin_empName', empName);
       }
-      showSuccess(empId, result);
+      showSuccess(empId, result, empName);
     } else {
       showError(result.error || '출근 처리 실패', '다시 시도해주세요.');
     }
@@ -143,7 +157,7 @@ function showLoading() {
   document.getElementById('loadingSection').style.display = 'block';
 }
 
-function showSuccess(empId, serverResult) {
+function showSuccess(empId, serverResult, empName) {
   document.getElementById('loadingSection').style.display = 'none';
 
   var now = new Date();
@@ -157,8 +171,9 @@ function showSuccess(empId, serverResult) {
   document.getElementById('resultTime').textContent = timeStr;
   document.querySelector('#successSection .result-message').textContent =
     type + ' 완료';
-  document.getElementById('resultDetail').textContent =
-    '사번 ' + empId + (serverResult?.scanCount ? ' | 오늘 ' + serverResult.scanCount + '번째' : '');
+  var detailText = (empName ? empName + ' | ' : '') + '사번 ' + empId;
+  if (serverResult?.scanCount) detailText += ' | 오늘 ' + serverResult.scanCount + '번째';
+  document.getElementById('resultDetail').textContent = detailText;
 
   var section = document.getElementById('successSection');
   section.style.display = 'block';

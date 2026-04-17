@@ -150,7 +150,7 @@ function getTokenSheet() {
   var sheet = ss.getSheetByName('토큰');
   if (!sheet) {
     sheet = ss.insertSheet('토큰');
-    sheet.appendRow(['token', 'empId', 'branch', 'createdAt']);
+    sheet.appendRow(['token', 'empId', 'name', 'branch', 'createdAt']);
   }
   return sheet;
 }
@@ -158,12 +158,12 @@ function getTokenSheet() {
 /**
  * 토큰으로 사번 조회. 없으면 null.
  */
-function getEmpIdByToken(token) {
+function getEmpByToken(token) {
   var sheet = getTokenSheet();
   var data = sheet.getDataRange().getValues();
   for (var i = 1; i < data.length; i++) {
     if (String(data[i][0]).trim() === token) {
-      return String(data[i][1]).trim();
+      return { empId: String(data[i][1]).trim(), name: String(data[i][2] || '').trim() };
     }
   }
   return null;
@@ -186,9 +186,9 @@ function hasTokenForEmpId(empId) {
 /**
  * 토큰 등록
  */
-function registerToken(token, empId, branch) {
+function registerToken(token, empId, name, branch) {
   var sheet = getTokenSheet();
-  sheet.appendRow([token, empId, branch, new Date().toISOString()]);
+  sheet.appendRow([token, empId, name, branch, new Date().toISOString()]);
 }
 
 // ========== 출석 처리 ==========
@@ -205,10 +205,12 @@ function handleCheckin(data) {
 
   var token = String(data.token || '').trim();
   var empId = null;
+  var empName = '';
 
   if (data.isNewDevice) {
-    // 최초 등록 — 사번 직접 입력
+    // 최초 등록 — 사번 + 이름 직접 입력
     empId = String(data.empId).trim();
+    empName = String(data.empName || '').trim();
 
     // 이미 다른 기기에서 등록된 사번인지 확인
     if (hasTokenForEmpId(empId)) {
@@ -216,13 +218,15 @@ function handleCheckin(data) {
     }
 
     // 토큰 등록
-    registerToken(token, empId, data.branch || '');
+    registerToken(token, empId, empName, data.branch || '');
   } else {
-    // 기존 기기 — 토큰으로 사번 조회
-    empId = getEmpIdByToken(token);
-    if (!empId) {
+    // 기존 기기 — 토큰으로 사번+이름 조회
+    var emp = getEmpByToken(token);
+    if (!emp) {
       return jsonOut({ success: false, error: '등록되지 않은 기기입니다. 사번을 다시 입력해주세요.' });
     }
+    empId = emp.empId;
+    empName = emp.name;
   }
 
   // 중복 체크 (같은 사번 1분 이내)
@@ -245,7 +249,7 @@ function handleCheckin(data) {
   var today = todayString();
   var scanCount = 0;
   for (var j = 1; j < allData.length; j++) {
-    if (String(allData[j][1]).trim() === empId && toDateString(allData[j][5]) === today) {
+    if (String(allData[j][1]).trim() === empId && toDateString(allData[j][6]) === today) {
       scanCount++;
     }
   }
@@ -261,6 +265,7 @@ function handleCheckin(data) {
   sheet.appendRow([
     now.toISOString(),   // timestamp
     empId,               // empId
+    empName,             // name
     data.branch || '',   // branch
     type,                // type
     time,                // time
@@ -289,16 +294,17 @@ function handleToday(params) {
   var records = [];
 
   for (var i = 1; i < data.length; i++) {
-    if (toDateString(data[i][5]) !== date) continue;
-    if (branch && data[i][2] !== branch) continue;
+    if (toDateString(data[i][6]) !== date) continue;
+    if (branch && data[i][3] !== branch) continue;
     records.push({
       timestamp: data[i][0],
       empId: String(data[i][1]).trim(),
-      branch: data[i][2],
-      type: data[i][3],
-      time: toTimeHHMM(data[i][4]),
-      date: toDateString(data[i][5]),
-      morning: data[i][6],
+      name: String(data[i][2] || '').trim(),
+      branch: data[i][3],
+      type: data[i][4],
+      time: toTimeHHMM(data[i][5]),
+      date: toDateString(data[i][6]),
+      morning: data[i][7],
     });
   }
 
@@ -316,26 +322,26 @@ function handleSummary(params) {
   // 사번별 집계
   var byEmp = {};
   for (var i = 1; i < data.length; i++) {
-    var rowDateStr = toDateString(data[i][5]);
+    var rowDateStr = toDateString(data[i][6]);
     if (!rowDateStr || !rowDateStr.startsWith(month)) continue;
-    if (branch && data[i][2] !== branch) continue;
+    if (branch && data[i][3] !== branch) continue;
 
     var empId = data[i][1];
     if (!byEmp[empId]) {
-      byEmp[empId] = { dates: {}, morningCount: 0, returnCount: 0, totalMinutes: 0, checkinCount: 0 };
+      byEmp[empId] = { name: String(data[i][2] || '').trim(), dates: {}, morningCount: 0, returnCount: 0, totalMinutes: 0, checkinCount: 0 };
     }
     var emp = byEmp[empId];
 
-    if (data[i][3] === '출근') {
+    if (data[i][4] === '출근') {
       emp.dates[rowDateStr] = true;
       emp.checkinCount++;
-      if (data[i][6]) emp.morningCount++;
+      if (data[i][7]) emp.morningCount++;
 
       // 시간 → 분으로 변환
-      var timeHHMM = toTimeHHMM(data[i][4]);
+      var timeHHMM = toTimeHHMM(data[i][5]);
       var timeParts = timeHHMM.split(':');
       emp.totalMinutes += parseInt(timeParts[0]) * 60 + parseInt(timeParts[1]);
-    } else if (data[i][3] === '귀소') {
+    } else if (data[i][4] === '귀소') {
       emp.returnCount++;
     }
   }
@@ -352,6 +358,7 @@ function handleSummary(params) {
 
     summaries.push({
       empId: id,
+      name: byEmp[id].name || '',
       days: days,
       avgTime: avgH + ':' + avgM,
       morningRate: days > 0 ? e.morningCount / days : 0,
@@ -383,10 +390,10 @@ function handleAlerts() {
   var empDates = {};
   for (var j = 1; j < data.length; j++) {
     var empId = data[j][1];
-    var date = data[j][5];
+    var date = data[j][6];
     if (!empDates[empId]) empDates[empId] = {};
-    if (data[j][3] === '출근') {
-      empDates[empId][date] = data[j][4]; // 출근 시간
+    if (data[j][4] === '출근') {
+      empDates[empId][date] = data[j][5]; // 출근 시간
     }
   }
 
@@ -433,7 +440,7 @@ function handleResetToken(data) {
 
   // 아래에서 위로 삭제 (행 번호 안 밀리게) — 같은 지점 소속만
   for (var i = allData.length - 1; i >= 1; i--) {
-    if (String(allData[i][1]).trim() === empId && String(allData[i][2]).trim() === requestBranch) {
+    if (String(allData[i][1]).trim() === empId && String(allData[i][3]).trim() === requestBranch) {
       sheet.deleteRow(i + 1);
       deleted++;
     }
