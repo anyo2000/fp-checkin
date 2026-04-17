@@ -32,6 +32,39 @@ const BRANCH = new URLSearchParams(window.location.search).get('branch') || '';
 let todayData = [];
 
 /**
+ * 시간 문자열 정리 — ISO/Date 객체 → HH:MM
+ * Sheets가 1899-12-30T08:22:09.000Z 같은 형식으로 반환하는 경우 처리
+ */
+function formatTime(val) {
+  if (!val) return '-';
+  var s = String(val);
+
+  // ISO 형식 (1899-12-30T08:22:09.000Z 또는 2026-04-17T...)
+  if (s.includes('T')) {
+    var d = new Date(s);
+    if (!isNaN(d.getTime())) {
+      // Sheets 시간 전용 셀은 1899-12-30 기준 → UTC 시간 그대로 사용
+      if (s.startsWith('1899') || s.startsWith('1900')) {
+        return String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0');
+      }
+      return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    }
+  }
+
+  // HH:MM:SS → HH:MM
+  if (s.match(/^\d{2}:\d{2}:\d{2}$/)) {
+    return s.slice(0, 5);
+  }
+
+  // HH:MM 이미 깔끔하면 그대로
+  if (s.match(/^\d{2}:\d{2}$/)) {
+    return s;
+  }
+
+  return s;
+}
+
+/**
  * branch 기준으로 데이터 필터링
  */
 function filterByBranch(records) {
@@ -95,13 +128,14 @@ function renderToday(records) {
       byEmp[r.empId] = { checkin: null, returns: [], lastScan: null, morning: false };
     }
     const emp = byEmp[r.empId];
+    var t = formatTime(r.time);
     if (r.type === '출근') {
-      emp.checkin = r.time;
+      emp.checkin = t;
       emp.morning = r.morning || false;
     } else {
-      emp.returns.push(r.time);
+      emp.returns.push(t);
     }
-    emp.lastScan = r.time;
+    emp.lastScan = t;
   });
 
   const empIds = Object.keys(byEmp);
