@@ -1,7 +1,7 @@
 // display.js — 태블릿 QR 표시 화면
 
 (async function () {
-  const canvas = document.getElementById('qrCanvas');
+  const qrContainer = document.getElementById('qrContainer');
   const timerBarFill = document.getElementById('timerBarFill');
   const timerText = document.getElementById('timerText');
   const clockEl = document.getElementById('clock');
@@ -13,6 +13,7 @@
   branchNameEl.textContent = branch === 'default' ? '테스트 지점' : branch;
 
   let lastWindow = -1;
+  let qrInstance = null;
 
   /**
    * QR 코드 갱신
@@ -30,7 +31,7 @@
       // QR에 담을 URL 생성
       const checkinURL =
         CONFIG.BASE_URL +
-        '/checkin.html?code=' +
+        '/fp-checkin/checkin.html?code=' +
         code +
         '&t=' +
         timestamp +
@@ -38,15 +39,19 @@
         encodeURIComponent(branch);
 
       // QR 코드 렌더링
-      QRCode.toCanvas(canvas, checkinURL, {
-        width: 280,
-        margin: 0,
-        color: {
-          dark: '#0f172a',
-          light: '#ffffff',
-        },
-        errorCorrectionLevel: 'M',
-      });
+      if (qrInstance) {
+        qrInstance.clear();
+        qrInstance.makeCode(checkinURL);
+      } else {
+        qrInstance = new QRCode(qrContainer, {
+          text: checkinURL,
+          width: 280,
+          height: 280,
+          colorDark: '#0f172a',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.M,
+        });
+      }
     }
 
     // 타이머 업데이트

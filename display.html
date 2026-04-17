@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>출근 QR</title>
   <link rel="stylesheet" href="css/style.css">
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
   <div class="display-page">
@@ -15,7 +15,7 @@
     <div class="title">출근 QR 스캔</div>
 
     <div class="qr-wrapper">
-      <canvas id="qrCanvas" width="280" height="280"></canvas>
+      <div id="qrContainer" style="width:280px;height:280px;"></div>
     </div>
 
     <div class="timer-bar">
