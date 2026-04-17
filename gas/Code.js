@@ -149,7 +149,11 @@ function handleCheckin(data) {
   var today = todayString();
   var scanCount = 0;
   for (var j = 1; j < allData.length; j++) {
-    if (String(allData[j][1]).trim() === empId && allData[j][5] === today) {
+    var rowDate = allData[j][5];
+    if (rowDate instanceof Date) {
+      rowDate = Utilities.formatDate(rowDate, 'Asia/Seoul', 'yyyy-MM-dd');
+    }
+    if (String(allData[j][1]).trim() === empId && String(rowDate) === today) {
       scanCount++;
     }
   }
@@ -193,7 +197,11 @@ function handleToday(params) {
   var records = [];
 
   for (var i = 1; i < data.length; i++) {
-    if (data[i][5] !== date) continue;
+    var rowDate = data[i][5];
+    if (rowDate instanceof Date) {
+      rowDate = Utilities.formatDate(rowDate, 'Asia/Seoul', 'yyyy-MM-dd');
+    }
+    if (String(rowDate) !== date) continue;
     if (branch && data[i][2] !== branch) continue;
     records.push({
       timestamp: data[i][0],
@@ -221,7 +229,10 @@ function handleSummary(params) {
   var byEmp = {};
   for (var i = 1; i < data.length; i++) {
     var rowDate = data[i][5];
-    if (!rowDate || !rowDate.startsWith(month)) continue;
+    if (rowDate instanceof Date) {
+      rowDate = Utilities.formatDate(rowDate, 'Asia/Seoul', 'yyyy-MM-dd');
+    }
+    if (!rowDate || !String(rowDate).startsWith(month)) continue;
     if (branch && data[i][2] !== branch) continue;
 
     var empId = data[i][1];
