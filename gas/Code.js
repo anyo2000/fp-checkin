@@ -45,7 +45,7 @@ function getBranchConfig(branchCode) {
 
 // ========== TOTP ==========
 
-var WINDOW_SEC = 15;
+var WINDOW_SEC = 30;
 var GRACE_SEC = 3;
 
 function generateTOTPCode(secret, window) {

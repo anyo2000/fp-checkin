@@ -4,7 +4,7 @@ const CONFIG = {
   TOTP_SECRET: 'fp-checkin-test-secret-2026',
 
   // QR 갱신 주기 (초)
-  WINDOW_SEC: 15,
+  WINDOW_SEC: 30,
 
   // 직전 코드 유예 시간 (초)
   GRACE_SEC: 3,
