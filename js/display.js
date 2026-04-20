@@ -7,38 +7,45 @@
   const clockEl = document.getElementById('clock');
   const branchNameEl = document.getElementById('branchName');
 
-  // URL 파라미터에서 지점 코드 추출
+  // URL 파라미터에서 코드 추출 (code 또는 branch)
   const params = new URLSearchParams(window.location.search);
-  const branch = params.get('branch') || 'default';
-  branchNameEl.textContent = branch === 'default' ? '테스트 지점' : branch;
+  const code = params.get('code') || params.get('branch') || 'default';
+
+  // 조직명 가져오기
+  if (CONFIG.GAS_URL && code !== 'default') {
+    try {
+      var res = await fetch(CONFIG.GAS_URL + '?action=branches');
+      var orgs = await res.json();
+      var node = orgs.find(function (o) { return o.code === code; });
+      branchNameEl.textContent = node ? node.name : code;
+    } catch (e) {
+      branchNameEl.textContent = code;
+    }
+  } else {
+    branchNameEl.textContent = code === 'default' ? '테스트 지점' : code;
+  }
 
   let lastWindow = -1;
   let qrInstance = null;
 
-  /**
-   * QR 코드 갱신
-   */
   async function updateQR() {
-    const { code, window, timestamp, remaining } = await TOTP.getCurrentCode(
+    const { code: totpCode, window, timestamp, remaining } = await TOTP.getCurrentCode(
       CONFIG.TOTP_SECRET,
       CONFIG.WINDOW_SEC
     );
 
-    // 같은 윈도우면 QR 갱신 불필요 (타이머만 업데이트)
     if (window !== lastWindow) {
       lastWindow = window;
 
-      // QR에 담을 URL 생성
       const checkinURL =
         CONFIG.BASE_URL +
         '/checkin.html?code=' +
-        code +
+        totpCode +
         '&t=' +
         timestamp +
         '&branch=' +
-        encodeURIComponent(branch);
+        encodeURIComponent(code);
 
-      // QR 코드 렌더링
       if (qrInstance) {
         qrInstance.clear();
         qrInstance.makeCode(checkinURL);
@@ -54,24 +61,23 @@
       }
     }
 
-    // 타이머 업데이트
-    timerText.textContent = remaining;
-    const percent = (remaining / CONFIG.WINDOW_SEC) * 100;
+    // 타이머 — MM:SS 형식
+    var mins = Math.floor(remaining / 60);
+    var secs = remaining % 60;
+    timerText.textContent = mins + ':' + String(secs).padStart(2, '0');
+
+    var percent = (remaining / CONFIG.WINDOW_SEC) * 100;
     timerBarFill.style.width = percent + '%';
 
-    // 색상 변경 (5초 이하면 주황, 3초 이하면 빨강)
-    if (remaining <= 3) {
+    if (remaining <= 30) {
       timerBarFill.style.background = '#ef4444';
-    } else if (remaining <= 5) {
+    } else if (remaining <= 60) {
       timerBarFill.style.background = '#f59e0b';
     } else {
       timerBarFill.style.background = '#3b82f6';
     }
   }
 
-  /**
-   * 시계 업데이트
-   */
   function updateClock() {
     const now = new Date();
     const h = String(now.getHours()).padStart(2, '0');
@@ -80,7 +86,6 @@
     clockEl.textContent = h + ':' + m + ':' + s;
   }
 
-  // 1초마다 업데이트
   updateQR();
   updateClock();
   setInterval(() => {
@@ -89,9 +94,6 @@
   }, 1000);
 })();
 
-/**
- * 전체화면 토글
- */
 function toggleFullscreen() {
   if (!document.fullscreenElement) {
     document.documentElement.requestFullscreen();

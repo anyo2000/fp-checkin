@@ -4,43 +4,84 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>관리자 - FP 출근 체크</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=2.0">
 </head>
 <body>
   <div class="admin-page">
-    <h1 id="pageTitle">FP 출근 관리</h1>
+    <!-- 지점 선택 화면 (code 파라미터 없을 때) -->
+    <div id="branchSelector" style="display:none;">
+      <h1 style="margin-bottom:8px;">FP 출근 관리</h1>
+      <p style="font-size:14px; color:#6b7280; margin-bottom:20px;">관리할 조직을 선택하세요</p>
+
+      <div style="margin-bottom:16px;">
+        <input type="text" id="orgSearch" class="input-field" placeholder="지점명 검색 (예: 정발산)" style="text-align:left; letter-spacing:normal; font-size:16px; padding:14px;" oninput="filterOrgList()">
+      </div>
+
+      <!-- 검색 결과 -->
+      <div id="orgSearchResults" style="display:none; margin-bottom:24px;"></div>
+
+      <!-- 단계별 선택 -->
+      <div id="orgStepSelect">
+        <p style="font-size:13px; color:#6b7280; margin-bottom:8px;" id="stepLabel">본부를 선택하세요</p>
+        <div id="orgButtons" class="org-button-grid"></div>
+      </div>
+
+      <!-- 뒤로가기 -->
+      <button id="orgBackBtn" class="tab-btn" style="display:none; margin-top:16px;" onclick="orgGoBack()">← 뒤로</button>
+    </div>
+
+    <!-- 관리 화면 -->
+    <div id="adminMain" style="display:none;">
+
+    <!-- 빵가루 네비 + 변경 버튼 -->
+    <div id="breadcrumb" style="font-size:13px; color:#6b7280; margin-bottom:4px;"></div>
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:4px;">
+      <h1 id="pageTitle" style="margin-bottom:0;">FP 출근 관리</h1>
+      <button class="tab-btn" onclick="goToSelector()" style="font-size:12px; padding:4px 12px;">변경</button>
+    </div>
+    <p id="pageSubtitle" style="font-size:13px; color:#6b7280; margin-bottom:20px;"></p>
 
     <!-- 탭 -->
-    <div class="tab-bar">
+    <div class="tab-bar" id="tabBar">
       <button class="tab-btn active" onclick="switchTab('today')">오늘 현황</button>
       <button class="tab-btn" onclick="switchTab('monthly')">월간 리포트</button>
       <button class="tab-btn" onclick="switchTab('alert')">이상 패턴</button>
-      <button class="tab-btn" onclick="switchTab('token')">기기 초기화</button>
+      <button class="tab-btn" id="tabManual" onclick="switchTab('manual')">수기 관리</button>
+      <button class="tab-btn" id="tabToken" onclick="switchTab('token')">기기 초기화</button>
     </div>
 
-    <!-- 오늘 현황 -->
+    <!-- ===== 오늘 현황 ===== -->
     <div id="tab-today">
-      <div class="stats-grid">
+      <!-- 지역단 뷰: 지점별 요약 카드 -->
+      <div id="regionSummaryCards" class="stats-grid" style="display:none;"></div>
+
+      <!-- 통계 카드 -->
+      <div id="todayStatsGrid" class="stats-grid">
         <div class="stat-card">
           <div class="stat-value" id="todayTotal">-</div>
-          <div class="stat-label">오늘 출근</div>
+          <div class="stat-label">출근</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value" id="todayMorning">-</div>
-          <div class="stat-label">조회 참석</div>
+          <div class="stat-value" id="todayNormal">-</div>
+          <div class="stat-label">정상</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="todayLate">-</div>
+          <div class="stat-label">지각</div>
         </div>
         <div class="stat-card">
           <div class="stat-value" id="todayReturn">-</div>
           <div class="stat-label">귀소</div>
         </div>
-        <div class="stat-card">
-          <div class="stat-value" id="todayAvgTime">-</div>
-          <div class="stat-label">평균 출근 시간</div>
-        </div>
       </div>
 
-      <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
-        <span style="font-size: 14px; color: #6b7280;" id="todayDate"></span>
+      <div style="margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:14px; color:#6b7280;" id="todayDate"></span>
+          <select id="locationFilter" class="filter-select" style="display:none;">
+            <option value="">전체</option>
+          </select>
+        </div>
         <button class="tab-btn" onclick="downloadCSV()">CSV 다운로드</button>
       </div>
 
@@ -49,24 +90,23 @@
           <tr>
             <th>이름</th>
             <th>사번</th>
+            <th id="thLocation" style="display:none;">위치</th>
             <th>출근</th>
+            <th>상태</th>
             <th>귀소</th>
-            <th>최종퇴실</th>
-            <th>조회</th>
           </tr>
         </thead>
         <tbody id="todayTableBody">
-          <tr><td colspan="6" style="text-align: center; color: #9ca3af;">데이터 로딩 중...</td></tr>
+          <tr><td colspan="6" style="text-align:center;color:#9ca3af;">데이터 로딩 중...</td></tr>
         </tbody>
       </table>
     </div>
 
-    <!-- 월간 리포트 -->
-    <div id="tab-monthly" style="display: none;">
-      <div style="margin-bottom: 16px;">
-        <input type="month" id="monthPicker" class="input-field" style="max-width: 200px; text-align: left; letter-spacing: normal; font-size: 16px;">
+    <!-- ===== 월간 리포트 ===== -->
+    <div id="tab-monthly" style="display:none;">
+      <div style="margin-bottom:16px;">
+        <input type="month" id="monthPicker" class="input-field" style="max-width:200px; text-align:left; letter-spacing:normal; font-size:16px;">
       </div>
-
       <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-value" id="monthlyAvgDays">-</div>
@@ -77,11 +117,10 @@
           <div class="stat-label">평균 출근 시간</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value" id="monthlyMorningRate">-</div>
-          <div class="stat-label">조회 참석률</div>
+          <div class="stat-value" id="monthlyNormalRate">-</div>
+          <div class="stat-label">정상출근률</div>
         </div>
       </div>
-
       <table class="data-table">
         <thead>
           <tr>
@@ -89,66 +128,163 @@
             <th>사번</th>
             <th>출근일</th>
             <th>평균 출근</th>
-            <th>조회 참석률</th>
+            <th>정상률</th>
             <th>귀소율</th>
           </tr>
         </thead>
         <tbody id="monthlyTableBody">
-          <tr><td colspan="6" style="text-align: center; color: #9ca3af;">월을 선택하세요</td></tr>
+          <tr><td colspan="6" style="text-align:center;color:#9ca3af;">월을 선택하세요</td></tr>
         </tbody>
       </table>
     </div>
 
-    <!-- 이상 패턴 -->
-    <div id="tab-alert" style="display: none;">
+    <!-- ===== 이상 패턴 ===== -->
+    <div id="tab-alert" style="display:none;">
       <table class="data-table">
         <thead>
-          <tr>
-            <th>유형</th>
-            <th>사번</th>
-            <th>상세</th>
-          </tr>
+          <tr><th>유형</th><th>사번</th><th>상세</th></tr>
         </thead>
         <tbody id="alertTableBody">
-          <tr><td colspan="3" style="text-align: center; color: #9ca3af;">데이터 로딩 중...</td></tr>
+          <tr><td colspan="3" style="text-align:center;color:#9ca3af;">데이터 로딩 중...</td></tr>
         </tbody>
       </table>
     </div>
 
-    <!-- 기기 초기화 -->
-    <div id="tab-token" style="display: none;">
-      <div class="card" style="max-width: 400px; text-align: left;">
-        <h2 style="font-size: 18px; margin-bottom: 4px;">기기 등록 초기화</h2>
-        <p style="font-size: 13px; color: #6b7280; margin-bottom: 20px;">
-          FP가 기기를 변경했을 때 기존 등록을 삭제합니다.<br>
-          이 지점 소속 사번만 삭제할 수 있습니다.
-        </p>
+    <!-- ===== 수기 관리 ===== -->
+    <div id="tab-manual" style="display:none;">
+      <div class="card" style="max-width:500px; text-align:left; margin-bottom:24px;">
+        <h2 style="font-size:18px; margin-bottom:16px;">수기 입력</h2>
 
-        <div class="form-group">
-          <label class="label">사번 (7자리)</label>
-          <input
-            type="tel"
-            id="resetEmpId"
-            class="input-field"
-            placeholder="0000000"
-            maxlength="7"
-            inputmode="numeric"
-            autocomplete="off"
-            style="text-align: left; letter-spacing: 2px;"
-          >
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+          <div>
+            <label class="label">위치</label>
+            <select id="manualLocation" class="input-field" style="text-align:left; letter-spacing:normal; font-size:14px; padding:12px;"></select>
+          </div>
+          <div>
+            <label class="label">구분</label>
+            <select id="manualType" class="input-field" style="text-align:left; letter-spacing:normal; font-size:14px; padding:12px;">
+              <option value="출근">출근</option>
+              <option value="귀소">귀소</option>
+            </select>
+          </div>
         </div>
 
-        <button class="btn btn-danger" onclick="resetToken()">
-          기기 등록 삭제
-        </button>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+          <div>
+            <label class="label">사번</label>
+            <input type="tel" id="manualEmpId" class="input-field" placeholder="0000000" maxlength="10" style="text-align:left; letter-spacing:2px; font-size:14px; padding:12px;">
+          </div>
+          <div>
+            <label class="label">이름</label>
+            <input type="text" id="manualEmpName" class="input-field" placeholder="홍길동" maxlength="10" style="text-align:left; letter-spacing:normal; font-size:14px; padding:12px;">
+          </div>
+        </div>
 
-        <div id="resetResult" style="margin-top: 16px; display: none;"></div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+          <div>
+            <label class="label">날짜</label>
+            <input type="date" id="manualDate" class="input-field" style="text-align:left; letter-spacing:normal; font-size:14px; padding:12px;">
+          </div>
+          <div>
+            <label class="label">시간</label>
+            <input type="time" id="manualTime" class="input-field" style="text-align:left; letter-spacing:normal; font-size:14px; padding:12px;">
+          </div>
+        </div>
+
+        <div style="margin-bottom:16px;">
+          <label class="label">사유 (필수)</label>
+          <textarea id="manualReason" class="input-field" rows="2" placeholder="QR 장애, 외근 후 복귀 등" style="text-align:left; letter-spacing:normal; font-size:14px; padding:12px; resize:vertical;"></textarea>
+        </div>
+
+        <button class="btn btn-primary" onclick="submitManualCheckin()" style="font-size:16px; padding:14px;">수기 입력</button>
+        <div id="manualResult" style="margin-top:12px; display:none;"></div>
+      </div>
+
+      <!-- 수정이력 -->
+      <h3 style="font-size:16px; margin-bottom:12px;">수정 이력</h3>
+      <table class="data-table">
+        <thead>
+          <tr><th>일시</th><th>작업</th><th>대상</th><th>내용</th><th>사유</th></tr>
+        </thead>
+        <tbody id="auditTableBody">
+          <tr><td colspan="5" style="text-align:center;color:#9ca3af;">이력 없음</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ===== 기기 초기화 ===== -->
+    <div id="tab-token" style="display:none;">
+      <div class="card" style="max-width:400px; text-align:left;">
+        <h2 style="font-size:18px; margin-bottom:4px;">기기 등록 초기화</h2>
+        <p style="font-size:13px; color:#6b7280; margin-bottom:20px;">
+          FP가 기기를 변경했을 때 기존 등록을 삭제합니다.
+        </p>
+        <div class="form-group">
+          <label class="label">사번 (7자리)</label>
+          <input type="tel" id="resetEmpId" class="input-field" placeholder="0000000" maxlength="7" inputmode="numeric" autocomplete="off" style="text-align:left; letter-spacing:2px;">
+        </div>
+        <button class="btn btn-danger" onclick="resetToken()">기기 등록 삭제</button>
+        <div id="resetResult" style="margin-top:16px; display:none;"></div>
       </div>
     </div>
 
   </div>
 
-  <script src="js/config.js?v=1.5"></script>
-  <script src="js/admin.js?v=1.5"></script>
+  <!-- ===== 수정 모달 ===== -->
+  <div id="editModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeEditModal()">
+    <div class="modal-content">
+      <h3 style="margin-bottom:16px;">기록 수정</h3>
+      <input type="hidden" id="editEmpId">
+      <input type="hidden" id="editDate">
+      <input type="hidden" id="editOldType">
+      <p id="editInfo" style="font-size:14px; color:#6b7280; margin-bottom:16px;"></p>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+        <div>
+          <label class="label">구분</label>
+          <select id="editNewType" class="input-field" style="text-align:left; letter-spacing:normal; font-size:14px; padding:12px;">
+            <option value="출근">출근</option>
+            <option value="귀소">귀소</option>
+          </select>
+        </div>
+        <div>
+          <label class="label">시간</label>
+          <input type="time" id="editNewTime" class="input-field" style="text-align:left; letter-spacing:normal; font-size:14px; padding:12px;">
+        </div>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label class="label">사유 (필수)</label>
+        <textarea id="editReason" class="input-field" rows="2" placeholder="수정 사유" style="text-align:left; letter-spacing:normal; font-size:14px; padding:12px; resize:vertical;"></textarea>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-primary" onclick="submitEdit()" style="font-size:14px; padding:12px;">수정</button>
+        <button class="btn" onclick="closeEditModal()" style="font-size:14px; padding:12px; background:#e5e7eb; color:#333;">취소</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 삭제 모달 ===== -->
+  <div id="deleteModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeDeleteModal()">
+    <div class="modal-content">
+      <h3 style="margin-bottom:16px;">기록 삭제</h3>
+      <input type="hidden" id="deleteEmpId">
+      <input type="hidden" id="deleteDate">
+      <input type="hidden" id="deleteType">
+      <p id="deleteInfo" style="font-size:14px; color:#6b7280; margin-bottom:16px;"></p>
+      <div style="margin-bottom:16px;">
+        <label class="label">사유 (필수)</label>
+        <textarea id="deleteReason" class="input-field" rows="2" placeholder="삭제 사유" style="text-align:left; letter-spacing:normal; font-size:14px; padding:12px; resize:vertical;"></textarea>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-danger" onclick="submitDelete()" style="font-size:14px; padding:12px;">삭제</button>
+        <button class="btn" onclick="closeDeleteModal()" style="font-size:14px; padding:12px; background:#e5e7eb; color:#333;">취소</button>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- /adminMain -->
+  </div>
+
+  <script src="js/config.js?v=2.0"></script>
+  <script src="js/admin.js?v=2.0"></script>
 </body>
 </html>

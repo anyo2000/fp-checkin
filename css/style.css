@@ -462,3 +462,128 @@ body {
   color: #6b7280;
   font-weight: 400;
 }
+
+/* ========== 탭바 스크롤 (모바일) ========== */
+
+.tab-bar {
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ========== 필터 셀렉트 ========== */
+
+.filter-select {
+  padding: 6px 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+  outline: none;
+}
+
+.filter-select:focus {
+  border-color: #2563eb;
+}
+
+/* ========== 인라인 버튼 (수정/삭제) ========== */
+
+.btn-sm {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-edit {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.btn-edit:hover {
+  background: #dbeafe;
+}
+
+.btn-del {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.btn-del:hover {
+  background: #fecaca;
+}
+
+/* ========== 모달 ========== */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+}
+
+.modal-content h3 {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* ========== 지점 선택 화면 ========== */
+
+.org-button-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.org-select-btn {
+  display: block;
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  background: white;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+}
+
+.org-select-btn:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.org-select-self {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.org-btn-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.org-btn-sub {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 2px;
+}
