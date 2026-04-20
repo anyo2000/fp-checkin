@@ -1017,3 +1017,36 @@ function setupOrgData() {
 
   Logger.log('조직도 설정 완료: ' + (rows.length - 1) + '건');
 }
+
+// ========== 기존 코드 마이그레이션 — 한 번만 실행 ==========
+
+function migrateOldCodes() {
+  var mapping = {
+    'jungbalsan_sfp': 'sfp.sudo1.jungbalsan',
+    'sinjooan': 'gyeongin.incheon.sinjuan',
+  };
+
+  var logSheet = getLogSheet();
+  var logData = logSheet.getDataRange().getValues();
+  var logCount = 0;
+  for (var i = 1; i < logData.length; i++) {
+    var old = String(logData[i][3]).trim();
+    if (mapping[old]) {
+      logSheet.getRange(i + 1, 4).setValue(mapping[old]);
+      logCount++;
+    }
+  }
+
+  var tokenSheet = getTokenSheet();
+  var tokenData = tokenSheet.getDataRange().getValues();
+  var tokenCount = 0;
+  for (var j = 1; j < tokenData.length; j++) {
+    var oldT = String(tokenData[j][3]).trim();
+    if (mapping[oldT]) {
+      tokenSheet.getRange(j + 1, 4).setValue(mapping[oldT]);
+      tokenCount++;
+    }
+  }
+
+  Logger.log('마이그레이션 완료 — 출석로그: ' + logCount + '건, 토큰: ' + tokenCount + '건');
+}
