@@ -45,8 +45,8 @@ function getBranchConfig(branchCode) {
 
 // ========== TOTP ==========
 
-var WINDOW_SEC = 30;
-var GRACE_SEC = 3;
+var WINDOW_SEC = 300;
+var GRACE_SEC = 30;
 
 function generateTOTPCode(secret, window) {
   var signature = Utilities.computeHmacSha256Signature(
