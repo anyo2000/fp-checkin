@@ -587,3 +587,31 @@ body {
   color: #6b7280;
   margin-top: 2px;
 }
+
+/* ========== QR 세팅 카드 ========== */
+
+.qr-setup-card {
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.qr-setup-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 8px;
+}
+
+.qr-setup-url {
+  font-size: 12px;
+  color: #6b7280;
+  word-break: break-all;
+  background: #f8fafc;
+  padding: 10px;
+  border-radius: 8px;
+  font-family: monospace;
+  line-height: 1.5;
+  user-select: all;
+}

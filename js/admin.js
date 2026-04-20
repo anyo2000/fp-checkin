@@ -217,9 +217,10 @@ function setupUI() {
     }
   }
 
-  // 지역단/본부 뷰에서는 수기관리/기기초기화 숨김
+  // 지역단/본부 뷰에서는 수기관리/기기초기화/QR세팅 숨김
   if (ADMIN_LEVEL === 'hq' || ADMIN_LEVEL === 'region') {
     document.getElementById('tabManual').style.display = 'none';
+    document.getElementById('tabQrsetup').style.display = 'none';
     document.getElementById('tabToken').style.display = 'none';
   }
 
@@ -256,7 +257,7 @@ function switchTab(tabName) {
   document.querySelectorAll('.tab-bar .tab-btn').forEach(function (btn) { btn.classList.remove('active'); });
   event.target.classList.add('active');
 
-  ['today', 'monthly', 'alert', 'manual', 'token'].forEach(function (t) {
+  ['today', 'monthly', 'alert', 'manual', 'qrsetup', 'token'].forEach(function (t) {
     var el = document.getElementById('tab-' + t);
     if (el) el.style.display = t === tabName ? 'block' : 'none';
   });
@@ -264,6 +265,7 @@ function switchTab(tabName) {
   if (tabName === 'monthly') loadMonthly();
   if (tabName === 'alert') loadAlerts();
   if (tabName === 'manual') loadAuditLog();
+  if (tabName === 'qrsetup') renderQRSetup();
 }
 
 // ========== 시간 포맷 ==========
@@ -673,6 +675,65 @@ function renderAuditLog(records) {
       '<td style="font-size:12px;">' + (r.reason || '') + '</td>' +
     '</tr>';
   }).join('');
+}
+
+// ========== QR 세팅 ==========
+
+function renderQRSetup() {
+  var container = document.getElementById('qrSetupCards');
+  if (!container) return;
+
+  var baseUrl = window.location.origin + window.location.pathname.replace('admin.html', 'display.html');
+  var locations = [];
+
+  // 자기 자신 (지점 또는 사업소)
+  if (ADMIN_NODE) {
+    locations.push({ code: CODE, name: ADMIN_NODE.name, manager: ADMIN_NODE.manager });
+  }
+
+  // 하위 사업소
+  var offices = getChildren(CODE);
+  for (var i = 0; i < offices.length; i++) {
+    if (offices[i].level === 'office') {
+      locations.push({ code: offices[i].code, name: offices[i].name, manager: offices[i].manager });
+    }
+  }
+
+  container.innerHTML = locations.map(function (loc) {
+    var url = baseUrl + '?code=' + encodeURIComponent(loc.code);
+    var managerText = loc.manager ? ' (' + loc.manager + ')' : '';
+    return '<div class="qr-setup-card">' +
+      '<div class="qr-setup-name">' + loc.name + managerText + '</div>' +
+      '<div class="qr-setup-url" id="qrurl-' + loc.code.replace(/\./g, '-') + '">' + url + '</div>' +
+      '<button class="btn btn-primary" onclick="copyQRUrl(\'' + loc.code.replace(/\./g, '-') + '\', this)" style="font-size:14px; padding:10px; margin-top:8px;">URL 복사</button>' +
+    '</div>';
+  }).join('');
+}
+
+function copyQRUrl(codeId, btn) {
+  var urlEl = document.getElementById('qrurl-' + codeId);
+  if (!urlEl) return;
+
+  var url = urlEl.textContent;
+  navigator.clipboard.writeText(url).then(function () {
+    var orig = btn.textContent;
+    btn.textContent = '복사 완료!';
+    btn.style.background = '#166534';
+    setTimeout(function () {
+      btn.textContent = orig;
+      btn.style.background = '';
+    }, 2000);
+  }).catch(function () {
+    // fallback
+    var ta = document.createElement('textarea');
+    ta.value = url;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    btn.textContent = '복사 완료!';
+    setTimeout(function () { btn.textContent = 'URL 복사'; }, 2000);
+  });
 }
 
 // ========== CSV 다운로드 ==========

@@ -47,6 +47,7 @@
       <button class="tab-btn" onclick="switchTab('monthly')">월간 리포트</button>
       <button class="tab-btn" onclick="switchTab('alert')">이상 패턴</button>
       <button class="tab-btn" id="tabManual" onclick="switchTab('manual')">수기 관리</button>
+      <button class="tab-btn" id="tabQrsetup" onclick="switchTab('qrsetup')">QR 세팅</button>
       <button class="tab-btn" id="tabToken" onclick="switchTab('token')">기기 초기화</button>
     </div>
 
@@ -210,6 +211,26 @@
           <tr><td colspan="5" style="text-align:center;color:#9ca3af;">이력 없음</td></tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- ===== QR 세팅 ===== -->
+    <div id="tab-qrsetup" style="display:none;">
+      <div class="card" style="max-width:500px; text-align:left;">
+        <h2 style="font-size:18px; margin-bottom:4px;">태블릿 QR 세팅</h2>
+        <p style="font-size:13px; color:#6b7280; margin-bottom:20px;">
+          아래 주소를 태블릿 브라우저에 붙여넣으세요.
+        </p>
+        <div id="qrSetupCards"></div>
+        <div style="margin-top:20px; padding:16px; background:#f8fafc; border-radius:12px;">
+          <p style="font-size:14px; font-weight:600; margin-bottom:8px;">태블릿 세팅 방법</p>
+          <ol style="font-size:13px; color:#6b7280; padding-left:20px; line-height:1.8;">
+            <li>태블릿 크롬 브라우저 열기</li>
+            <li>위 주소 붙여넣기</li>
+            <li>전체화면 버튼 누르기</li>
+            <li>항상 켜짐 설정 권장</li>
+          </ol>
+        </div>
+      </div>
     </div>
 
     <!-- ===== 기기 초기화 ===== -->
