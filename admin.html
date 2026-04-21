@@ -89,12 +89,12 @@
       <table class="data-table">
         <thead>
           <tr>
-            <th>이름</th>
-            <th>사번</th>
+            <th class="sortable" onclick="sortToday('name')">이름</th>
+            <th class="sortable" onclick="sortToday('empId')">사번</th>
             <th id="thLocation" style="display:none;">위치</th>
-            <th>출근</th>
-            <th>상태</th>
-            <th>귀소</th>
+            <th class="sortable" onclick="sortToday('checkin')">출근</th>
+            <th class="sortable" onclick="sortToday('status')">상태</th>
+            <th class="sortable" onclick="sortToday('return')">귀소</th>
           </tr>
         </thead>
         <tbody id="todayTableBody">
@@ -125,12 +125,12 @@
       <table class="data-table">
         <thead>
           <tr>
-            <th>이름</th>
-            <th>사번</th>
-            <th>출근일</th>
-            <th>평균 출근</th>
-            <th>정상률</th>
-            <th>귀소율</th>
+            <th class="sortable" onclick="sortMonthly('name')">이름</th>
+            <th class="sortable" onclick="sortMonthly('empId')">사번</th>
+            <th class="sortable" onclick="sortMonthly('days')">출근일</th>
+            <th class="sortable" onclick="sortMonthly('avgTime')">평균 출근</th>
+            <th class="sortable" onclick="sortMonthly('normalRate')">정상률</th>
+            <th class="sortable" onclick="sortMonthly('returnRate')">귀소율</th>
           </tr>
         </thead>
         <tbody id="monthlyTableBody">
@@ -143,7 +143,7 @@
     <div id="tab-alert" style="display:none;">
       <table class="data-table">
         <thead>
-          <tr><th>유형</th><th>사번</th><th>상세</th></tr>
+          <tr><th class="sortable" onclick="sortAlert('type')">유형</th><th class="sortable" onclick="sortAlert('empId')">사번</th><th class="sortable" onclick="sortAlert('detail')">상세</th></tr>
         </thead>
         <tbody id="alertTableBody">
           <tr><td colspan="3" style="text-align:center;color:#9ca3af;">데이터 로딩 중...</td></tr>

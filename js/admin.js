@@ -7,6 +7,45 @@ var ORG_MAP = {};
 var ADMIN_LEVEL = '';
 var ADMIN_NODE = null;
 var todayData = [];
+var _monthlySummaries = [];
+var _alertsData = [];
+var _sortState = {}; // { tableKey: { col: '', dir: 'asc'|'desc' } }
+
+function toggleSort(tableKey, col) {
+  if (!_sortState[tableKey] || _sortState[tableKey].col !== col) {
+    _sortState[tableKey] = { col: col, dir: 'asc' };
+  } else {
+    _sortState[tableKey].dir = _sortState[tableKey].dir === 'asc' ? 'desc' : 'asc';
+  }
+  // 헤더 표시 업데이트
+  var table = { today: 'tab-today', monthly: 'tab-monthly', alert: 'tab-alert' }[tableKey];
+  var el = document.getElementById(table);
+  if (el) {
+    el.querySelectorAll('th.sortable').forEach(function (th) {
+      th.classList.remove('sort-asc', 'sort-desc');
+    });
+    // onclick에서 col명 찾기
+    el.querySelectorAll('th.sortable').forEach(function (th) {
+      var onclick = th.getAttribute('onclick') || '';
+      if (onclick.indexOf("'" + col + "'") >= 0) {
+        th.classList.add('sort-' + _sortState[tableKey].dir);
+      }
+    });
+  }
+  return _sortState[tableKey];
+}
+
+function compareValues(a, b, dir) {
+  if (a === b) return 0;
+  if (a === null || a === undefined || a === '-' || a === '') return 1;
+  if (b === null || b === undefined || b === '-' || b === '') return -1;
+  var numA = parseFloat(a), numB = parseFloat(b);
+  if (!isNaN(numA) && !isNaN(numB)) {
+    return dir === 'asc' ? numA - numB : numB - numA;
+  }
+  var strA = String(a), strB = String(b);
+  return dir === 'asc' ? strA.localeCompare(strB) : strB.localeCompare(strA);
+}
 
 // ========== 지점 선택 ==========
 
@@ -383,8 +422,24 @@ function renderToday(records) {
     return;
   }
 
+  // 정렬
+  var sort = _sortState['today'];
+  if (sort) {
+    empIds.sort(function (a, b) {
+      var va, vb, empA = byEmp[a], empB = byEmp[b];
+      if (sort.col === 'name') { va = empA.name; vb = empB.name; }
+      else if (sort.col === 'empId') { va = a; vb = b; }
+      else if (sort.col === 'checkin') { va = empA.checkin || '99:99'; vb = empB.checkin || '99:99'; }
+      else if (sort.col === 'status') { va = empA.checkinStatus; vb = empB.checkinStatus; }
+      else if (sort.col === 'return') { va = empA.returns.length > 0 ? empA.returns[empA.returns.length - 1] : ''; vb = empB.returns.length > 0 ? empB.returns[empB.returns.length - 1] : ''; }
+      else { va = empA.checkin || '99:99'; vb = empB.checkin || '99:99'; }
+      return compareValues(va, vb, sort.dir);
+    });
+  } else {
+    empIds.sort(function (a, b) { return (byEmp[a].checkin || '99:99') < (byEmp[b].checkin || '99:99') ? -1 : 1; });
+  }
+
   tbody.innerHTML = empIds
-    .sort(function (a, b) { return (byEmp[a].checkin || '99:99') < (byEmp[b].checkin || '99:99') ? -1 : 1; })
     .map(function (id) {
       var emp = byEmp[id];
       var locationTd = showLocation ? '<td style="font-size:12px;">' + orgName(emp.branch) + '</td>' : '';
@@ -410,6 +465,11 @@ function renderToday(records) {
     }).join('');
 }
 
+function sortToday(col) {
+  toggleSort('today', col);
+  renderToday(todayData);
+}
+
 // ========== 월간 리포트 ==========
 
 async function loadMonthly() {
@@ -426,7 +486,8 @@ async function loadMonthly() {
     var url = CONFIG.GAS_URL + '?action=summary&month=' + month + '&code=' + encodeURIComponent(CODE);
     var res = await fetch(url);
     var data = await res.json();
-    renderMonthly(data);
+    _monthlySummaries = data || [];
+    renderMonthly(_monthlySummaries);
   } catch (err) {
     console.error('월간 데이터 로드 실패:', err);
     document.getElementById('monthlyTableBody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:#dc2626;font-size:14px;padding:32px 16px;">데이터 로드 실패</td></tr>';
@@ -455,8 +516,25 @@ function renderMonthly(summaries) {
     document.getElementById('monthlyAvgTime').textContent = String(Math.floor(totalMin / 60)).padStart(2, '0') + ':' + String(Math.round(totalMin % 60)).padStart(2, '0');
   }
 
-  document.getElementById('monthlyTableBody').innerHTML = summaries
-    .sort(function (a, b) { return b.days - a.days; })
+  var sorted = summaries.slice();
+  var sort = _sortState['monthly'];
+  if (sort) {
+    sorted.sort(function (a, b) {
+      var va, vb;
+      if (sort.col === 'name') { va = a.name; vb = b.name; }
+      else if (sort.col === 'empId') { va = a.empId; vb = b.empId; }
+      else if (sort.col === 'days') { va = a.days; vb = b.days; }
+      else if (sort.col === 'avgTime') { va = a.avgTime; vb = b.avgTime; }
+      else if (sort.col === 'normalRate') { va = a.normalRate || 0; vb = b.normalRate || 0; }
+      else if (sort.col === 'returnRate') { va = a.returnRate || 0; vb = b.returnRate || 0; }
+      else { va = a.days; vb = b.days; }
+      return compareValues(va, vb, sort.dir);
+    });
+  } else {
+    sorted.sort(function (a, b) { return b.days - a.days; });
+  }
+
+  document.getElementById('monthlyTableBody').innerHTML = sorted
     .map(function (r) {
       return '<tr>' +
         '<td>' + (r.name || '-') + '</td>' +
@@ -469,6 +547,11 @@ function renderMonthly(summaries) {
     }).join('');
 }
 
+function sortMonthly(col) {
+  toggleSort('monthly', col);
+  renderMonthly(_monthlySummaries);
+}
+
 // ========== 이상 패턴 ==========
 
 async function loadAlerts() {
@@ -478,7 +561,8 @@ async function loadAlerts() {
     var url = CONFIG.GAS_URL + '?action=alerts';
     var res = await fetch(url);
     var data = await res.json();
-    renderAlerts(data);
+    _alertsData = data || [];
+    renderAlerts(_alertsData);
   } catch (err) {
     console.error('알림 데이터 로드 실패:', err);
     document.getElementById('alertTableBody').innerHTML = '<tr><td colspan="3" style="text-align:center;color:#dc2626;font-size:14px;padding:32px 16px;">데이터 로드 실패</td></tr>';
@@ -491,10 +575,23 @@ function renderAlerts(alerts) {
     tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#9ca3af;">이상 패턴 없음</td></tr>';
     return;
   }
-  tbody.innerHTML = alerts.map(function (a) {
+  var sorted = alerts.slice();
+  var sort = _sortState['alert'];
+  if (sort) {
+    sorted.sort(function (a, b) {
+      return compareValues(a[sort.col], b[sort.col], sort.dir);
+    });
+  }
+
+  tbody.innerHTML = sorted.map(function (a) {
     var cls = a.level === 'high' ? 'badge-red' : 'badge-yellow';
     return '<tr><td><span class="badge ' + cls + '">' + a.type + '</span></td><td>' + a.empId + '</td><td>' + a.detail + '</td></tr>';
   }).join('');
+}
+
+function sortAlert(col) {
+  toggleSort('alert', col);
+  renderAlerts(_alertsData);
 }
 
 // ========== 수기 입력 ==========
