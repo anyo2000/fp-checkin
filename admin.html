@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>관리자 - FP 출근 체크</title>
-  <link rel="stylesheet" href="css/style.css?v=2.2">
+  <link rel="stylesheet" href="css/style.css?v=2.3">
 </head>
 <body>
   <div class="admin-page">
@@ -251,61 +251,10 @@
 
   </div>
 
-  <!-- ===== 수정 모달 ===== -->
-  <div id="editModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeEditModal()">
-    <div class="modal-content">
-      <h3 style="margin-bottom:16px;">기록 수정</h3>
-      <input type="hidden" id="editEmpId">
-      <input type="hidden" id="editDate">
-      <input type="hidden" id="editOldType">
-      <p id="editInfo" style="font-size:14px; color:#6b7280; margin-bottom:16px;"></p>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
-        <div>
-          <label class="label">구분</label>
-          <select id="editNewType" class="input-field" style="text-align:left; letter-spacing:normal; font-size:14px; padding:12px;">
-            <option value="출근">출근</option>
-            <option value="귀소">귀소</option>
-          </select>
-        </div>
-        <div>
-          <label class="label">시간</label>
-          <input type="time" id="editNewTime" class="input-field" style="text-align:left; letter-spacing:normal; font-size:14px; padding:12px;">
-        </div>
-      </div>
-      <div style="margin-bottom:16px;">
-        <label class="label">사유 (필수)</label>
-        <textarea id="editReason" class="input-field" rows="2" placeholder="수정 사유" style="text-align:left; letter-spacing:normal; font-size:14px; padding:12px; resize:vertical;"></textarea>
-      </div>
-      <div style="display:flex; gap:8px;">
-        <button class="btn btn-primary" onclick="submitEdit()" style="font-size:14px; padding:12px;">수정</button>
-        <button class="btn" onclick="closeEditModal()" style="font-size:14px; padding:12px; background:#e5e7eb; color:#333;">취소</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== 삭제 모달 ===== -->
-  <div id="deleteModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeDeleteModal()">
-    <div class="modal-content">
-      <h3 style="margin-bottom:16px;">기록 삭제</h3>
-      <input type="hidden" id="deleteEmpId">
-      <input type="hidden" id="deleteDate">
-      <input type="hidden" id="deleteType">
-      <p id="deleteInfo" style="font-size:14px; color:#6b7280; margin-bottom:16px;"></p>
-      <div style="margin-bottom:16px;">
-        <label class="label">사유 (필수)</label>
-        <textarea id="deleteReason" class="input-field" rows="2" placeholder="삭제 사유" style="text-align:left; letter-spacing:normal; font-size:14px; padding:12px; resize:vertical;"></textarea>
-      </div>
-      <div style="display:flex; gap:8px;">
-        <button class="btn btn-danger" onclick="submitDelete()" style="font-size:14px; padding:12px;">삭제</button>
-        <button class="btn" onclick="closeDeleteModal()" style="font-size:14px; padding:12px; background:#e5e7eb; color:#333;">취소</button>
-      </div>
-    </div>
-  </div>
-
   </div><!-- /adminMain -->
   </div>
 
-  <script src="js/config.js?v=2.2"></script>
-  <script src="js/admin.js?v=2.2"></script>
+  <script src="js/config.js?v=2.3"></script>
+  <script src="js/admin.js?v=2.3"></script>
 </body>
 </html>

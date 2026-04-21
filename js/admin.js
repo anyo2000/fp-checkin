@@ -387,7 +387,6 @@ function renderToday(records) {
   }
 
   var showLocation = document.getElementById('thLocation').style.display !== 'none';
-  var showActions = (ADMIN_LEVEL === 'branch' || ADMIN_LEVEL === 'office' || ADMIN_LEVEL === '');
 
   // 사번별 그룹핑
   var byEmp = {};
@@ -443,15 +442,6 @@ function renderToday(records) {
     .map(function (id) {
       var emp = byEmp[id];
       var locationTd = showLocation ? '<td style="font-size:12px;">' + orgName(emp.branch) + '</td>' : '';
-      var actionsTd = '';
-      if (showActions && emp.checkin) {
-        actionsTd = '<td style="white-space:nowrap;">' +
-          '<button class="btn-sm btn-edit" onclick="openEditModal(\'' + id + '\',\'' + emp.name + '\',\'' + document.getElementById('todayDate').textContent + '\',\'출근\',\'' + emp.checkin + '\')">수정</button> ' +
-          '<button class="btn-sm btn-del" onclick="openDeleteModal(\'' + id + '\',\'' + emp.name + '\',\'' + document.getElementById('todayDate').textContent + '\',\'출근\',\'' + emp.checkin + '\')">삭제</button>' +
-        '</td>';
-      } else if (showActions) {
-        actionsTd = '<td></td>';
-      }
 
       return '<tr>' +
         '<td>' + (emp.name || '-') + '</td>' +
@@ -460,7 +450,6 @@ function renderToday(records) {
         '<td>' + (emp.checkin || '-') + '</td>' +
         '<td>' + statusBadge(emp.checkinStatus) + '</td>' +
         '<td>' + (emp.returns.length > 0 ? emp.returns[emp.returns.length - 1] : '-') + '</td>' +
-        actionsTd +
         '</tr>';
     }).join('');
 }
