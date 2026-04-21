@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>관리자 - FP 출근 체크</title>
-  <link rel="stylesheet" href="css/style.css?v=2.3">
+  <link rel="stylesheet" href="css/style.css?v=2.4">
 </head>
 <body>
   <div class="admin-page">
@@ -241,8 +241,8 @@
           FP가 기기를 변경했을 때 기존 등록을 삭제합니다.
         </p>
         <div class="form-group">
-          <label class="label">사번 (7자리)</label>
-          <input type="tel" id="resetEmpId" class="input-field" placeholder="0000000" maxlength="7" inputmode="numeric" autocomplete="off" style="text-align:left; letter-spacing:2px;">
+          <label class="label">사번</label>
+          <input type="tel" id="resetEmpId" class="input-field" placeholder="0000000" maxlength="10" inputmode="numeric" autocomplete="off" style="text-align:left; letter-spacing:2px;">
         </div>
         <button class="btn btn-danger" onclick="resetToken()">기기 등록 삭제</button>
         <div id="resetResult" style="margin-top:16px; display:none;"></div>
@@ -254,7 +254,7 @@
   </div><!-- /adminMain -->
   </div>
 
-  <script src="js/config.js?v=2.3"></script>
-  <script src="js/admin.js?v=2.3"></script>
+  <script src="js/config.js?v=2.4"></script>
+  <script src="js/admin.js?v=2.4"></script>
 </body>
 </html>

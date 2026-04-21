@@ -851,9 +851,9 @@ function downloadCSV() {
 async function resetToken() {
   var empId = document.getElementById('resetEmpId').value.trim();
   var resultDiv = document.getElementById('resetResult');
-  if (!empId || empId.length !== 7) {
+  if (!empId || empId.length < 3) {
     resultDiv.style.display = 'block';
-    resultDiv.innerHTML = '<p style="color:#dc2626;font-size:14px;">사번 7자리를 정확히 입력해주세요.</p>';
+    resultDiv.innerHTML = '<p style="color:#dc2626;font-size:14px;">사번을 입력해주세요.</p>';
     return;
   }
   if (!confirm('사번 ' + empId + '의 기기 등록을 삭제하시겠습니까?')) return;
