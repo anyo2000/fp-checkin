@@ -49,8 +49,10 @@ function generateToken() {
 }
 
 /**
- * 출근 처리
+ * 출근 처리 — 최초 등록 시 확인 단계 추가
  */
+var _pendingToken = null;
+
 async function doCheckin() {
   var params = new URLSearchParams(window.location.search);
   var code = params.get('code');
@@ -65,7 +67,7 @@ async function doCheckin() {
     // 토큰 모드 — localStorage에서 사번 가져옴
     empId = localStorage.getItem('fp_checkin_empId');
   } else {
-    // 최초 등록 — 사번 + 이름 입력
+    // 최초 등록 — 사번 + 이름 입력 → 확인 화면
     var empIdInput = document.getElementById('empId');
     var empNameInput = document.getElementById('empName');
     empId = empIdInput.value.trim();
@@ -80,9 +82,35 @@ async function doCheckin() {
       return;
     }
 
-    token = generateToken();
-    isNewDevice = true;
+    // 확인 화면 표시
+    _pendingToken = generateToken();
+    document.getElementById('confirmEmpId').textContent = empId;
+    document.getElementById('confirmEmpName').textContent = empName;
+    document.getElementById('formSection').style.display = 'none';
+    document.getElementById('confirmSection').style.display = 'block';
+    return;
   }
+
+  // 토큰 모드 — 바로 출근 처리
+  await processCheckin(token, empId, false);
+}
+
+function cancelConfirm() {
+  document.getElementById('confirmSection').style.display = 'none';
+  document.getElementById('formSection').style.display = 'block';
+  _pendingToken = null;
+}
+
+async function doCheckinConfirmed() {
+  var empId = document.getElementById('empId').value.trim();
+  await processCheckin(_pendingToken, empId, true);
+}
+
+async function processCheckin(token, empId, isNewDevice) {
+  var params = new URLSearchParams(window.location.search);
+  var code = params.get('code');
+  var t = params.get('t');
+  var branch = params.get('branch') || 'default';
 
   // TOTP 클라이언트 사전 검증
   var verification = await TOTP.verifyCode(
@@ -161,6 +189,7 @@ async function doCheckin() {
 function showLoading() {
   document.getElementById('formSection').style.display = 'none';
   document.getElementById('tokenSection').style.display = 'none';
+  document.getElementById('confirmSection').style.display = 'none';
   document.getElementById('loadingSection').style.display = 'block';
 }
 

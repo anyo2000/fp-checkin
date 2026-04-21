@@ -63,6 +63,27 @@
         <p id="errorMsg" style="color: #dc2626; margin-top: 12px; font-size: 14px; display: none;"></p>
       </div>
 
+      <!-- 등록 정보 확인 (최초 등록 시) -->
+      <div id="confirmSection" style="display: none;">
+        <div class="logo">📋</div>
+        <h1>등록 정보 확인</h1>
+        <div style="background:#f8fafc; border-radius:12px; padding:20px; margin:16px 0; text-align:left;">
+          <div style="margin-bottom:12px;">
+            <span style="font-size:13px; color:#6b7280;">사번</span>
+            <div id="confirmEmpId" style="font-size:20px; font-weight:700; letter-spacing:2px;"></div>
+          </div>
+          <div>
+            <span style="font-size:13px; color:#6b7280;">이름</span>
+            <div id="confirmEmpName" style="font-size:20px; font-weight:700;"></div>
+          </div>
+        </div>
+        <p style="font-size:14px; color:#854d0e; margin-bottom:16px;">위 정보가 맞는지 확인해주세요.<br>등록 후에는 변경이 어렵습니다.</p>
+        <div style="display:flex; gap:8px;">
+          <button class="btn" onclick="cancelConfirm()" style="flex:1; background:#e5e7eb; color:#333; font-size:16px; padding:14px;">수정</button>
+          <button class="btn btn-primary" onclick="doCheckinConfirmed()" style="flex:2; font-size:16px; padding:14px;">확인 후 출근</button>
+        </div>
+      </div>
+
       <!-- 로딩 -->
       <div id="loadingSection" style="display: none;">
         <div class="spinner show"></div>
@@ -90,8 +111,8 @@
     </div>
   </div>
 
-  <script src="js/config.js?v=2.0"></script>
-  <script src="js/totp.js?v=2.0"></script>
-  <script src="js/checkin.js?v=2.0"></script>
+  <script src="js/config.js?v=2.1"></script>
+  <script src="js/totp.js?v=2.1"></script>
+  <script src="js/checkin.js?v=2.1"></script>
 </body>
 </html>
