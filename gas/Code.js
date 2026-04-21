@@ -1048,5 +1048,20 @@ function migrateOldCodes() {
     }
   }
 
-  Logger.log('마이그레이션 완료 — 출석로그: ' + logCount + '건, 토큰: ' + tokenCount + '건');
+  // 지점설정 시트도 변환
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var cfgSheet = ss.getSheetByName('지점설정');
+  var cfgCount = 0;
+  if (cfgSheet) {
+    var cfgData = cfgSheet.getDataRange().getValues();
+    for (var k = 1; k < cfgData.length; k++) {
+      var oldC = String(cfgData[k][0]).trim();
+      if (mapping[oldC]) {
+        cfgSheet.getRange(k + 1, 1).setValue(mapping[oldC]);
+        cfgCount++;
+      }
+    }
+  }
+
+  Logger.log('마이그레이션 완료 — 출석로그: ' + logCount + '건, 토큰: ' + tokenCount + '건, 지점설정: ' + cfgCount + '건');
 }

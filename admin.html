@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>관리자 - FP 출근 체크</title>
-  <link rel="stylesheet" href="css/style.css?v=2.0">
+  <link rel="stylesheet" href="css/style.css?v=2.1">
 </head>
 <body>
   <div class="admin-page">
@@ -14,7 +14,7 @@
       <p style="font-size:14px; color:#6b7280; margin-bottom:20px;">관리할 조직을 선택하세요</p>
 
       <div style="margin-bottom:16px;">
-        <input type="text" id="orgSearch" class="input-field" placeholder="지점명 검색 (예: 정발산)" style="text-align:left; letter-spacing:normal; font-size:16px; padding:14px;" oninput="filterOrgList()">
+        <input type="text" id="orgSearch" class="input-field" placeholder="지점명 검색" style="text-align:left; letter-spacing:normal; font-size:16px; padding:14px;" oninput="filterOrgList()">
       </div>
 
       <!-- 검색 결과 -->
@@ -98,7 +98,7 @@
           </tr>
         </thead>
         <tbody id="todayTableBody">
-          <tr><td colspan="6" style="text-align:center;color:#9ca3af;">데이터 로딩 중...</td></tr>
+          <tr><td colspan="6" style="text-align:center;color:#2563eb;font-size:16px;font-weight:600;padding:32px 16px;">데이터 로딩 중...</td></tr>
         </tbody>
       </table>
     </div>
@@ -305,7 +305,7 @@
   </div><!-- /adminMain -->
   </div>
 
-  <script src="js/config.js?v=2.0"></script>
-  <script src="js/admin.js?v=2.0"></script>
+  <script src="js/config.js?v=2.1"></script>
+  <script src="js/admin.js?v=2.1"></script>
 </body>
 </html>
