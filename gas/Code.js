@@ -304,6 +304,14 @@ function handleCheckin(data) {
   var type = scanCount === 0 ? '출근' : '귀소';
   var time = timeString(now);
 
+  // 귀소는 14시 이후만 허용
+  if (type === '귀소') {
+    var hourKST = parseInt(Utilities.formatDate(now, 'Asia/Seoul', 'HH'));
+    if (hourKST < 14) {
+      return jsonOut({ success: false, error: '귀소는 14시 이후에 가능합니다' });
+    }
+  }
+
   // 출근 상태 (응답용)
   var status = '';
   if (type === '출근') {
@@ -670,6 +678,40 @@ function handleResetToken(data) {
   return jsonOut({ success: true, deleted: deleted });
 }
 
+// ========== 체크인 상태 확인 ==========
+
+function handleCheckStatus(params) {
+  var token = String(params.token || '').trim();
+  if (!token) return jsonOut({ checkedIn: false });
+
+  var emp = getEmpByToken(token);
+  if (!emp) return jsonOut({ checkedIn: false, invalidToken: true });
+
+  var today = todayString();
+  var sheet = getLogSheet();
+  var data = sheet.getDataRange().getValues();
+  var hasCheckin = false;
+  var hasReturn = false;
+
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][1]).trim() === emp.empId && toDateString(data[i][6]) === today) {
+      var type = String(data[i][4]).trim();
+      if (type === '출근') hasCheckin = true;
+      if (type === '귀소') hasReturn = true;
+    }
+  }
+
+  var now = new Date();
+  var hourKST = parseInt(Utilities.formatDate(now, 'Asia/Seoul', 'HH'));
+
+  return jsonOut({
+    checkedIn: hasCheckin,
+    hasReturn: hasReturn,
+    canReturn: hasCheckin && !hasReturn && hourKST >= 14,
+    afterTwo: hourKST >= 14,
+  });
+}
+
 // ========== HTTP 핸들러 ==========
 
 function doPost(e) {
@@ -695,6 +737,7 @@ function doGet(e) {
     if (action === 'branches') return handleBranches(e.parameter);
     if (action === 'todaySummary') return handleTodaySummary(e.parameter);
     if (action === 'auditLog') return handleAuditLog(e.parameter);
+    if (action === 'checkStatus') return handleCheckStatus(e.parameter);
     return jsonOut({ error: 'Unknown action' });
   } catch (err) {
     return jsonOut({ error: err.message });

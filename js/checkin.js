@@ -23,6 +23,8 @@
     document.getElementById('tokenSection').style.display = 'block';
     document.getElementById('tokenEmpName').textContent = savedEmpName || '';
     document.getElementById('tokenEmpId').textContent = '사번 ' + savedEmpId;
+    // 상태 확인 → 버튼 분기
+    checkTokenStatus(token);
   } else {
     // 최초 접속 → 사번 입력 모드
     var empIdInput = document.getElementById('empId');
@@ -32,6 +34,59 @@
     empIdInput.focus();
   }
 })();
+
+/**
+ * 토큰 모드 — 출근 상태 확인 후 버튼 분기
+ */
+async function checkTokenStatus(token) {
+  if (!CONFIG.GAS_URL) return;
+  try {
+    var res = await fetch(CONFIG.GAS_URL + '?action=checkStatus&token=' + encodeURIComponent(token));
+    var status = await res.json();
+
+    if (status.invalidToken) {
+      localStorage.removeItem('fp_checkin_token');
+      localStorage.removeItem('fp_checkin_empId');
+      localStorage.removeItem('fp_checkin_empName');
+      location.reload();
+      return;
+    }
+
+    var btnArea = document.getElementById('tokenBtnArea');
+    var statusMsg = document.getElementById('tokenStatusMsg');
+    var title = document.getElementById('tokenTitle');
+    var badge = document.getElementById('tokenBadge');
+
+    if (status.checkedIn && status.hasReturn) {
+      // 이미 출근 + 귀소 완료
+      btnArea.innerHTML = '';
+      statusMsg.style.display = 'block';
+      statusMsg.style.color = '#166534';
+      statusMsg.textContent = '오늘 출근/귀소 모두 완료되었습니다';
+      title.textContent = '완료';
+      badge.textContent = '출근·귀소 완료';
+      badge.style.background = '#dcfce7';
+    } else if (status.canReturn) {
+      // 출근 완료 + 14시 이후 → 귀소 버튼
+      btnArea.innerHTML = '<button class="btn" onclick="doCheckin()" style="background:#166534; color:white; font-size:18px; padding:16px;">귀소</button>';
+      title.textContent = '귀소 체크';
+      badge.textContent = '출근 완료';
+      badge.style.background = '#dcfce7';
+    } else if (status.checkedIn && !status.afterTwo) {
+      // 출근 완료 + 14시 이전
+      btnArea.innerHTML = '';
+      statusMsg.style.display = 'block';
+      statusMsg.style.color = '#854d0e';
+      statusMsg.textContent = '귀소는 14시 이후에 가능합니다';
+      title.textContent = '출근 완료';
+      badge.textContent = '출근 완료';
+      badge.style.background = '#dcfce7';
+    }
+    // else: 미출근 → 기본 출근 버튼 유지
+  } catch (e) {
+    console.error('상태 확인 실패:', e);
+  }
+}
 
 /**
  * 디바이스 토큰 생성

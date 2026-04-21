@@ -13,16 +13,19 @@
       <!-- 토큰 인증 모드 (등록된 기기) -->
       <div id="tokenSection" style="display: none;">
         <div class="logo">📋</div>
-        <h1>출근 체크</h1>
+        <h1 id="tokenTitle">출근 체크</h1>
         <div class="token-user-info">
-          <span class="token-badge">자동 인증</span>
+          <span class="token-badge" id="tokenBadge">자동 인증</span>
           <div class="token-empname" id="tokenEmpName"></div>
         <div class="token-empid" id="tokenEmpId"></div>
         </div>
 
-        <button class="btn btn-primary" onclick="doCheckin()">
-          출근
-        </button>
+        <div id="tokenBtnArea">
+          <button class="btn btn-primary" onclick="doCheckin()">
+            출근
+          </button>
+        </div>
+        <p id="tokenStatusMsg" style="display:none; margin-top:12px; font-size:15px; font-weight:600;"></p>
       </div>
 
       <!-- 사번 입력 모드 (최초 등록) -->
