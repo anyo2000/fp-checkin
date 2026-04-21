@@ -240,6 +240,16 @@ function hasTokenForEmpId(empId) {
   return false;
 }
 
+function removeTokenForEmpId(empId) {
+  var sheet = getTokenSheet();
+  var data = sheet.getDataRange().getValues();
+  for (var i = data.length - 1; i >= 1; i--) {
+    if (String(data[i][1]).trim() === empId) {
+      sheet.deleteRow(i + 1);
+    }
+  }
+}
+
 function registerToken(token, empId, name, branch) {
   var sheet = getTokenSheet();
   sheet.appendRow([token, empId, name, branch, new Date().toISOString()]);
@@ -263,8 +273,9 @@ function handleCheckin(data) {
   if (data.isNewDevice) {
     empId = String(data.empId).trim();
     empName = String(data.empName || '').trim();
+    // 기존 토큰이 있으면 삭제 후 재등록 (localStorage 유실 대응)
     if (hasTokenForEmpId(empId)) {
-      return jsonOut({ success: false, error: '이미 다른 기기에 등록된 사번입니다. 관리자에게 문의하세요.' });
+      removeTokenForEmpId(empId);
     }
     registerToken(token, empId, empName, data.branch || '');
   } else {
