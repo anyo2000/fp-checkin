@@ -416,6 +416,12 @@ async function loadMonthly() {
   var month = document.getElementById('monthPicker').value;
   if (!month || !CONFIG.GAS_URL) return;
 
+  // 로딩 표시
+  document.getElementById('monthlyTableBody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:#2563eb;font-size:16px;font-weight:600;padding:32px 16px;">데이터 로딩 중...</td></tr>';
+  document.getElementById('monthlyAvgDays').textContent = '-';
+  document.getElementById('monthlyAvgTime').textContent = '-';
+  document.getElementById('monthlyNormalRate').textContent = '-';
+
   try {
     var url = CONFIG.GAS_URL + '?action=summary&month=' + month + '&code=' + encodeURIComponent(CODE);
     var res = await fetch(url);
@@ -423,6 +429,7 @@ async function loadMonthly() {
     renderMonthly(data);
   } catch (err) {
     console.error('월간 데이터 로드 실패:', err);
+    document.getElementById('monthlyTableBody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:#dc2626;font-size:14px;padding:32px 16px;">데이터 로드 실패</td></tr>';
   }
 }
 
@@ -466,6 +473,7 @@ function renderMonthly(summaries) {
 
 async function loadAlerts() {
   if (!CONFIG.GAS_URL) return;
+  document.getElementById('alertTableBody').innerHTML = '<tr><td colspan="3" style="text-align:center;color:#2563eb;font-size:16px;font-weight:600;padding:32px 16px;">데이터 로딩 중...</td></tr>';
   try {
     var url = CONFIG.GAS_URL + '?action=alerts';
     var res = await fetch(url);
@@ -473,6 +481,7 @@ async function loadAlerts() {
     renderAlerts(data);
   } catch (err) {
     console.error('알림 데이터 로드 실패:', err);
+    document.getElementById('alertTableBody').innerHTML = '<tr><td colspan="3" style="text-align:center;color:#dc2626;font-size:14px;padding:32px 16px;">데이터 로드 실패</td></tr>';
   }
 }
 
