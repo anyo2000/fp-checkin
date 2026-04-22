@@ -5,7 +5,7 @@
  * 시트 구조:
  *   조직도: code, name, level, parent, manager
  *   출석로그: timestamp, empId, name, branch, type, time, date, (미사용), verified/source
- *   지점설정: code, normalEnd, lateEnd
+ *   지점설정: branchCode, branchName, morningStart, morningEnd
  *   시스템설정: key, value
  *   토큰: token, empId, name, branch, createdAt
  *   수정이력: timestamp, action, targetEmpId, targetName, targetDate, before, after, reason, adminCode
@@ -35,8 +35,8 @@ function getThresholdConfig(branchCode) {
   for (var i = 1; i < data.length; i++) {
     if (String(data[i][0]).trim() === branchCode) {
       return {
-        normalEnd: String(data[i][1]).trim() || DEFAULT_NORMAL_END,
-        lateEnd: String(data[i][2]).trim() || DEFAULT_LATE_END,
+        normalEnd: String(data[i][2]).trim() || DEFAULT_NORMAL_END,
+        lateEnd: String(data[i][3]).trim() || DEFAULT_LATE_END,
       };
     }
   }
@@ -47,8 +47,8 @@ function getThresholdConfig(branchCode) {
     for (var j = 1; j < data.length; j++) {
       if (String(data[j][0]).trim() === node.parent) {
         return {
-          normalEnd: String(data[j][1]).trim() || DEFAULT_NORMAL_END,
-          lateEnd: String(data[j][2]).trim() || DEFAULT_LATE_END,
+          normalEnd: String(data[j][2]).trim() || DEFAULT_NORMAL_END,
+          lateEnd: String(data[j][3]).trim() || DEFAULT_LATE_END,
         };
       }
     }
@@ -1066,7 +1066,7 @@ function setupOrgData() {
   var cfgSheet = ss.getSheetByName('지점설정');
   if (!cfgSheet) {
     cfgSheet = ss.insertSheet('지점설정');
-    cfgSheet.getRange(1, 1, 1, 3).setValues([['code', 'normalEnd', 'lateEnd']]);
+    cfgSheet.getRange(1, 1, 1, 4).setValues([['branchCode', 'branchName', 'morningStart', 'morningEnd']]);
   }
 
   Logger.log('조직도 설정 완료: ' + (rows.length - 1) + '건');
