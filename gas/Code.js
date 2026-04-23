@@ -26,6 +26,20 @@ function getConfig(key) {
   return null;
 }
 
+function normalizeTimeHHMM(val) {
+  if (val instanceof Date || (typeof val === 'object' && val !== null && val.getHours)) {
+    var h = String(val.getHours()).padStart(2, '0');
+    var m = String(val.getMinutes()).padStart(2, '0');
+    return h + ':' + m;
+  }
+  var s = String(val).trim();
+  if (!s) return '';
+  // "9:30" → "09:30"
+  var match = s.match(/^(\d{1,2}):(\d{2})/);
+  if (match) return match[1].padStart(2, '0') + ':' + match[2];
+  return s;
+}
+
 function getThresholdConfig(branchCode) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName('지점설정');
@@ -35,8 +49,8 @@ function getThresholdConfig(branchCode) {
   for (var i = 1; i < data.length; i++) {
     if (String(data[i][0]).trim() === branchCode) {
       return {
-        normalEnd: String(data[i][2]).trim() || DEFAULT_NORMAL_END,
-        lateEnd: String(data[i][3]).trim() || DEFAULT_LATE_END,
+        normalEnd: normalizeTimeHHMM(data[i][2]) || DEFAULT_NORMAL_END,
+        lateEnd: normalizeTimeHHMM(data[i][3]) || DEFAULT_LATE_END,
       };
     }
   }
@@ -47,8 +61,8 @@ function getThresholdConfig(branchCode) {
     for (var j = 1; j < data.length; j++) {
       if (String(data[j][0]).trim() === node.parent) {
         return {
-          normalEnd: String(data[j][2]).trim() || DEFAULT_NORMAL_END,
-          lateEnd: String(data[j][3]).trim() || DEFAULT_LATE_END,
+          normalEnd: normalizeTimeHHMM(data[j][2]) || DEFAULT_NORMAL_END,
+          lateEnd: normalizeTimeHHMM(data[j][3]) || DEFAULT_LATE_END,
         };
       }
     }

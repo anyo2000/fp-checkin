@@ -207,7 +207,10 @@ function renderBreadcrumb() {
   // 날짜
   var today = new Date();
   var dateStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-  document.getElementById('todayDate').textContent = dateStr;
+  var todayDateEl = document.getElementById('todayDate');
+  todayDateEl.value = dateStr;
+  todayDateEl.max = dateStr; // 미래 날짜 선택 방지
+  todayDateEl.addEventListener('change', loadToday);
   document.getElementById('monthPicker').value = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
   document.getElementById('monthPicker').addEventListener('change', loadMonthly);
 
@@ -338,17 +341,19 @@ function statusBadge(status) {
 async function loadToday() {
   if (!CONFIG.GAS_URL) return;
 
+  var selectedDate = document.getElementById('todayDate').value;
+
   try {
     // 지역단/본부: 요약 카드
     if (ADMIN_LEVEL === 'region' || ADMIN_LEVEL === 'hq') {
-      var summaryUrl = CONFIG.GAS_URL + '?action=todaySummary&code=' + encodeURIComponent(CODE) + '&date=' + document.getElementById('todayDate').textContent;
+      var summaryUrl = CONFIG.GAS_URL + '?action=todaySummary&code=' + encodeURIComponent(CODE) + '&date=' + selectedDate;
       var sRes = await fetch(summaryUrl);
       var summaryData = await sRes.json();
       renderRegionSummary(summaryData);
     }
 
     // 상세 데이터
-    var url = CONFIG.GAS_URL + '?action=today&code=' + encodeURIComponent(CODE) + '&date=' + document.getElementById('todayDate').textContent;
+    var url = CONFIG.GAS_URL + '?action=today&code=' + encodeURIComponent(CODE) + '&date=' + selectedDate;
     var res = await fetch(url);
     todayData = await res.json();
     renderToday(todayData);
@@ -417,7 +422,7 @@ function renderToday(records) {
   var tbody = document.getElementById('todayTableBody');
   var colSpan = showLocation ? 7 : 6;
   if (empIds.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="' + colSpan + '" style="text-align:center;color:#9ca3af;">오늘 출석 데이터 없음</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="' + colSpan + '" style="text-align:center;color:#9ca3af;">해당 날짜 출석 데이터 없음</td></tr>';
     return;
   }
 
@@ -837,7 +842,7 @@ async function sendTodayEmail() {
   if (todayData.length === 0) { alert('전송할 데이터가 없습니다.'); return; }
   var email = prompt('수신 이메일 주소를 입력하세요:');
   if (!email) return;
-  var date = document.getElementById('todayDate').textContent;
+  var date = document.getElementById('todayDate').value;
   var code = new URLSearchParams(location.search).get('code') || '';
   try {
     var res = await fetch(CONFIG.GAS_URL, {

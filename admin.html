@@ -43,7 +43,7 @@
 
     <!-- 탭 -->
     <div class="tab-bar" id="tabBar">
-      <button class="tab-btn active" onclick="switchTab('today')">오늘 현황</button>
+      <button class="tab-btn active" onclick="switchTab('today')">일일 현황</button>
       <button class="tab-btn" onclick="switchTab('monthly')">월간 리포트</button>
       <button class="tab-btn" onclick="switchTab('alert')">이상 패턴</button>
       <button class="tab-btn" id="tabManual" onclick="switchTab('manual')">수기 관리</button>
@@ -78,7 +78,7 @@
 
       <div style="margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
         <div style="display:flex; align-items:center; gap:8px;">
-          <span style="font-size:14px; color:#6b7280;" id="todayDate"></span>
+          <input type="date" id="todayDate" class="input-field" style="max-width:170px; text-align:left; letter-spacing:normal; font-size:15px; padding:8px 12px;">
           <select id="locationFilter" class="filter-select" style="display:none;">
             <option value="">전체</option>
           </select>
