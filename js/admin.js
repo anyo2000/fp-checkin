@@ -833,17 +833,43 @@ function copyQRUrl(codeId, btn) {
 
 // ========== CSV 다운로드 ==========
 
-function downloadCSV() {
-  if (todayData.length === 0) { alert('다운로드할 데이터가 없습니다.'); return; }
-  var csv = 'timestamp,empId,name,branch,type,time,status\n';
-  todayData.forEach(function (r) {
-    csv += r.timestamp + ',' + r.empId + ',' + (r.name || '') + ',' + (r.branch || '') + ',' + r.type + ',' + r.time + ',' + (r.status || '') + '\n';
-  });
-  var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-  var link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = 'checkin_' + document.getElementById('todayDate').textContent + '.csv';
-  link.click();
+async function sendTodayEmail() {
+  if (todayData.length === 0) { alert('전송할 데이터가 없습니다.'); return; }
+  var email = prompt('수신 이메일 주소를 입력하세요:');
+  if (!email) return;
+  var date = document.getElementById('todayDate').textContent;
+  var code = new URLSearchParams(location.search).get('code') || '';
+  try {
+    var res = await fetch(CONFIG.GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'sendEmail', type: 'today', date: date, code: code, email: email }),
+    });
+    var result = await res.json();
+    if (result.success) alert('메일이 전송되었습니다.');
+    else alert('전송 실패: ' + (result.error || '알 수 없는 오류'));
+  } catch (err) {
+    alert('전송 실패: ' + err.message);
+  }
+}
+
+async function sendMonthlyEmail() {
+  if (_monthlySummaries.length === 0) { alert('전송할 데이터가 없습니다.'); return; }
+  var email = prompt('수신 이메일 주소를 입력하세요:');
+  if (!email) return;
+  var month = document.getElementById('monthPicker').value;
+  if (!month) { alert('월을 먼저 선택하세요.'); return; }
+  var code = new URLSearchParams(location.search).get('code') || '';
+  try {
+    var res = await fetch(CONFIG.GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'sendEmail', type: 'monthly', month: month, code: code, email: email }),
+    });
+    var result = await res.json();
+    if (result.success) alert('메일이 전송되었습니다.');
+    else alert('전송 실패: ' + (result.error || '알 수 없는 오류'));
+  } catch (err) {
+    alert('전송 실패: ' + err.message);
+  }
 }
 
 // ========== 기기 초기화 ==========

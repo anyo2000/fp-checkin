@@ -500,6 +500,53 @@ function handleSummary(params) {
   return jsonOut(summaries);
 }
 
+// ========== 메일 전송 ==========
+
+function handleSendEmail(data) {
+  var email = data.email;
+  var type = data.type;
+  if (!email) return jsonOut({ success: false, error: '이메일 주소가 없습니다.' });
+
+  var csv, subject, filename;
+
+  if (type === 'today') {
+    var todayResult = handleToday({ date: data.date || todayString(), code: data.code || '' });
+    var records = JSON.parse(todayResult.getContent());
+    csv = '시간,사번,이름,지점,유형,출근시간,상태\n';
+    for (var i = 0; i < records.length; i++) {
+      var r = records[i];
+      csv += (r.timestamp || '') + ',' + r.empId + ',' + (r.name || '') + ',' + (r.branch || '') + ',' + r.type + ',' + r.time + ',' + (r.status || '') + '\n';
+    }
+    var dateStr = data.date || todayString();
+    subject = '[FP출근] ' + dateStr + ' 일간 리포트';
+    filename = 'checkin_' + dateStr + '.csv';
+
+  } else if (type === 'monthly') {
+    var monthlyResult = handleSummary({ month: data.month, code: data.code || '' });
+    var summaries = JSON.parse(monthlyResult.getContent());
+    csv = '이름,사번,지점,출근일,평균출근시간,정상출근,지각,업무중,정상출근률,귀소율\n';
+    for (var j = 0; j < summaries.length; j++) {
+      var s = summaries[j];
+      csv += (s.name || '') + ',' + s.empId + ',' + (s.branch || '') + ',' + s.days + ',' + (s.avgTime || '') + ',' + (s.normalCount || 0) + ',' + (s.lateCount || 0) + ',' + (s.workingCount || 0) + ',' + Math.round((s.normalRate || 0) * 100) + '%,' + Math.round((s.returnRate || 0) * 100) + '%\n';
+    }
+    subject = '[FP출근] ' + data.month + ' 월간 리포트';
+    filename = 'monthly_' + data.month + '.csv';
+
+  } else {
+    return jsonOut({ success: false, error: '알 수 없는 유형' });
+  }
+
+  var blob = Utilities.newBlob(csv, 'text/csv', filename);
+  MailApp.sendEmail({
+    to: email,
+    subject: subject,
+    body: subject + ' 첨부 파일을 확인해주세요.',
+    attachments: [blob],
+  });
+
+  return jsonOut({ success: true });
+}
+
 function handleAlerts() {
   var sheet = getLogSheet();
   var data = sheet.getDataRange().getValues();
@@ -733,6 +780,7 @@ function doPost(e) {
     if (data.action === 'manualCheckin') return handleManualCheckin(data);
     if (data.action === 'editRecord') return handleEditRecord(data);
     if (data.action === 'deleteRecord') return handleDeleteRecord(data);
+    if (data.action === 'sendEmail') return handleSendEmail(data);
     return jsonOut({ success: false, error: 'Unknown action' });
   } catch (err) {
     return jsonOut({ success: false, error: err.message });

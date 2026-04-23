@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>관리자 - FP 출근 체크</title>
-  <link rel="stylesheet" href="css/style.css?v=2.4">
+  <link rel="stylesheet" href="css/style.css?v=2.5">
 </head>
 <body>
   <div class="admin-page">
@@ -83,7 +83,7 @@
             <option value="">전체</option>
           </select>
         </div>
-        <button class="tab-btn" onclick="downloadCSV()">CSV 다운로드</button>
+        <button class="tab-btn" onclick="sendTodayEmail()">메일 전송</button>
       </div>
 
       <table class="data-table">
@@ -105,8 +105,9 @@
 
     <!-- ===== 월간 리포트 ===== -->
     <div id="tab-monthly" style="display:none;">
-      <div style="margin-bottom:16px;">
+      <div style="margin-bottom:16px; display:flex; align-items:center; justify-content:space-between;">
         <input type="month" id="monthPicker" class="input-field" style="max-width:200px; text-align:left; letter-spacing:normal; font-size:16px;">
+        <button class="tab-btn" onclick="sendMonthlyEmail()">메일 전송</button>
       </div>
       <div class="stats-grid">
         <div class="stat-card">
@@ -255,6 +256,6 @@
   </div>
 
   <script src="js/config.js?v=2.4"></script>
-  <script src="js/admin.js?v=2.4"></script>
+  <script src="js/admin.js?v=2.5"></script>
 </body>
 </html>
