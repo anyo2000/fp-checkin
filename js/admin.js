@@ -1,5 +1,77 @@
 // admin.js v2 — 조직도 기반 관리자 페이지
 
+// ========== 관리자 게이트 (대회 제출용 단순 비밀번호) ==========
+
+window.__ADMIN_GATE_PASSED = false;
+
+(function adminGate() {
+  var STORAGE_KEY = 'fp_admin_gate_v1';
+  var urlKey = new URLSearchParams(window.location.search).get('key');
+
+  // URL 파라미터로 키 들어옴
+  if (urlKey && urlKey === CONFIG.ADMIN_KEY) {
+    localStorage.setItem(STORAGE_KEY, CONFIG.ADMIN_KEY);
+    var qs = new URLSearchParams(window.location.search);
+    qs.delete('key');
+    var newUrl = window.location.pathname + (qs.toString() ? '?' + qs.toString() : '') + window.location.hash;
+    history.replaceState(null, '', newUrl);
+    window.__ADMIN_GATE_PASSED = true;
+    return;
+  }
+
+  // 이미 통과한 디바이스
+  if (localStorage.getItem(STORAGE_KEY) === CONFIG.ADMIN_KEY) {
+    window.__ADMIN_GATE_PASSED = true;
+    return;
+  }
+
+  // 게이트 표시
+  document.addEventListener('DOMContentLoaded', renderGate);
+  if (document.readyState !== 'loading') renderGate();
+
+  function renderGate() {
+    var adminPage = document.querySelector('.admin-page');
+    if (adminPage) adminPage.style.display = 'none';
+
+    var gate = document.createElement('div');
+    gate.id = 'adminGate';
+    gate.style.cssText = 'display:flex; align-items:center; justify-content:center; min-height:100vh; padding:20px; background:#f5f5f5;';
+    gate.innerHTML =
+      '<div style="background:white; padding:40px 32px; border-radius:16px; max-width:400px; width:100%; box-shadow:0 2px 12px rgba(0,0,0,0.08); text-align:center;">' +
+        '<div style="font-size:48px; margin-bottom:8px;">🔒</div>' +
+        '<h1 style="font-size:22px; margin-bottom:8px;">관리자 인증</h1>' +
+        '<p style="font-size:14px; color:#6b7280; margin-bottom:24px;">접근 키를 입력해주세요</p>' +
+        '<input type="password" id="gateInput" placeholder="접근 키" style="width:100%; padding:14px; border:2px solid #e5e7eb; border-radius:12px; font-size:16px; text-align:center; outline:none; margin-bottom:12px; box-sizing:border-box;" autocomplete="off">' +
+        '<button id="gateBtn" style="width:100%; padding:14px; background:#2563eb; color:white; border:none; border-radius:12px; font-size:16px; font-weight:600; cursor:pointer;">입장</button>' +
+        '<p id="gateError" style="display:none; color:#dc2626; font-size:13px; margin-top:12px;"></p>' +
+      '</div>';
+    document.body.appendChild(gate);
+
+    var input = document.getElementById('gateInput');
+    var btn = document.getElementById('gateBtn');
+    input.focus();
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); submitGate(); }
+    });
+    btn.addEventListener('click', submitGate);
+  }
+
+  function submitGate() {
+    var val = document.getElementById('gateInput').value.trim();
+    if (val === CONFIG.ADMIN_KEY) {
+      localStorage.setItem(STORAGE_KEY, CONFIG.ADMIN_KEY);
+      window.location.reload();
+    } else {
+      var err = document.getElementById('gateError');
+      err.textContent = '접근 키가 맞지 않아요';
+      err.style.display = 'block';
+      var input = document.getElementById('gateInput');
+      input.value = '';
+      input.focus();
+    }
+  }
+})();
+
 var params = new URLSearchParams(window.location.search);
 var CODE = params.get('code') || params.get('branch') || '';
 var ORG_LIST = [];
@@ -192,6 +264,9 @@ function renderBreadcrumb() {
 // ========== 초기화 ==========
 
 (async function () {
+  // 게이트 통과 못 하면 이후 로직 실행 안 함
+  if (!window.__ADMIN_GATE_PASSED) return;
+
   // 조직도 먼저 로드
   await loadOrgTree();
 

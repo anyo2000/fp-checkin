@@ -18,4 +18,7 @@ const CONFIG = {
   // 출근 상태 기본 기준
   DEFAULT_NORMAL_END: '09:00',
   DEFAULT_LATE_END: '10:00',
+
+  // 관리자 페이지 게이트 키 (대회 제출용 단순 게이트)
+  ADMIN_KEY: 'fp-brief-2026-vibe',
 };
