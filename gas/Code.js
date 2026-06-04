@@ -277,7 +277,7 @@ function handleCheckin(data) {
 
   var verification = verifyTOTPCode(secret, data.code);
   if (!verification.valid) {
-    return jsonOut({ success: false, error: 'QR이 만료되었습니다' });
+    return jsonOut({ success: false, error: 'QR이 새로 바뀌었어요' });
   }
 
   var token = String(data.token || '').trim();
@@ -301,7 +301,7 @@ function handleCheckin(data) {
     empName = emp.name;
   }
 
-  // 중복 체크 (1분 이내)
+  // 중복 체크 (1분 이내, 모든 type 공통)
   var sheet = getLogSheet();
   var allData = sheet.getDataRange().getValues();
   var now = new Date();
@@ -311,33 +311,57 @@ function handleCheckin(data) {
     if (String(allData[i][1]).trim() === empId) {
       var rowTime = new Date(allData[i][0]).getTime();
       if (rowTime > oneMinuteAgo) {
-        return jsonOut({ success: false, error: '1분 이내 중복 스캔입니다' });
+        return jsonOut({ success: false, error: '방금 등록되었어요. 잠시 후 다시 시도해주세요' });
       }
       break;
     }
   }
 
-  // 오늘 스캔 횟수
+  // 오늘 type별 등록 현황
   var today = todayString();
-  var scanCount = 0;
+  var todayTypes = {};
   for (var j = 1; j < allData.length; j++) {
     if (String(allData[j][1]).trim() === empId && toDateString(allData[j][6]) === today) {
-      scanCount++;
+      var rowType = String(allData[j][4]).trim();
+      todayTypes[rowType] = (todayTypes[rowType] || 0) + 1;
     }
   }
+  var totalScanCount = 0;
+  for (var k in todayTypes) totalScanCount += todayTypes[k];
 
-  var type = scanCount === 0 ? '출근' : '귀소';
+  // type 결정 — v2가 보낸 eventType 우선, 없으면 v1 자동 분기 (호환)
+  var explicitType = String(data.eventType || '').trim();
+  var type;
+  if (explicitType) {
+    type = explicitType;
+  } else {
+    type = totalScanCount === 0 ? '출근' : '귀소';
+  }
+
+  // type별 검증
+  var hourKST = parseInt(Utilities.formatDate(now, 'Asia/Seoul', 'HH'));
+
+  if (type === '출근') {
+    if (todayTypes['출근']) {
+      return jsonOut({ success: false, error: '오늘 출근이 이미 등록되어 있어요' });
+    }
+  } else if (type === '귀소') {
+    if (hourKST < 14) {
+      return jsonOut({ success: false, error: '귀소는 오후 2시부터 등록할 수 있어요' });
+    }
+    if (todayTypes['귀소']) {
+      return jsonOut({ success: false, error: '오늘 귀소가 이미 등록되어 있어요' });
+    }
+  } else if (type === '퇴근') {
+    if (todayTypes['퇴근']) {
+      return jsonOut({ success: false, error: '오늘 퇴근이 이미 등록되어 있어요' });
+    }
+  }
+  // '학습회'는 시간·횟수 제약 없음
+
   var time = timeString(now);
 
-  // 귀소는 14시 이후만 허용
-  if (type === '귀소') {
-    var hourKST = parseInt(Utilities.formatDate(now, 'Asia/Seoul', 'HH'));
-    if (hourKST < 14) {
-      return jsonOut({ success: false, error: '귀소는 14시 이후에 가능합니다' });
-    }
-  }
-
-  // 출근 상태 (응답용)
+  // 출근 상태 (응답용 — 출근일 때만)
   var status = '';
   if (type === '출근') {
     var thresholdConfig = getThresholdConfig(data.branch || '');
@@ -364,7 +388,7 @@ function handleCheckin(data) {
     type: type,
     time: time,
     status: status,
-    scanCount: scanCount + 1,
+    scanCount: totalScanCount + 1,
     branch: branchName,
   });
 }
@@ -764,12 +788,16 @@ function handleCheckStatus(params) {
   var data = sheet.getDataRange().getValues();
   var hasCheckin = false;
   var hasReturn = false;
+  var hasLearning = false;
+  var hasLeave = false;
 
   for (var i = 1; i < data.length; i++) {
     if (String(data[i][1]).trim() === emp.empId && toDateString(data[i][6]) === today) {
       var type = String(data[i][4]).trim();
       if (type === '출근') hasCheckin = true;
-      if (type === '귀소') hasReturn = true;
+      else if (type === '귀소') hasReturn = true;
+      else if (type === '학습회') hasLearning = true;
+      else if (type === '퇴근') hasLeave = true;
     }
   }
 
@@ -777,10 +805,25 @@ function handleCheckStatus(params) {
   var hourKST = parseInt(Utilities.formatDate(now, 'Asia/Seoul', 'HH'));
 
   return jsonOut({
+    // v1 호환 필드 (정발산 main 클라이언트가 사용)
     checkedIn: hasCheckin,
     hasReturn: hasReturn,
     canReturn: hasCheckin && !hasReturn && hourKST >= 14,
     afterTwo: hourKST >= 14,
+    // v2 신규 필드 (4개 이벤트 버튼용)
+    today: {
+      checkin: hasCheckin,
+      return: hasReturn,
+      learning: hasLearning,
+      leave: hasLeave,
+    },
+    canEvent: {
+      checkin: !hasCheckin,
+      return: !hasReturn && hourKST >= 14,
+      learning: true, // 시간·횟수 무제한
+      leave: !hasLeave,
+    },
+    hourKST: hourKST,
   });
 }
 

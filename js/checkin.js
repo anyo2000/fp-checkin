@@ -1,4 +1,4 @@
-// checkin.js — FP 출석 페이지 (토큰 인증)
+// checkin.js — FP 출석 페이지 (v2: 4개 이벤트 + 토큰 인증)
 
 (function () {
   var params = new URLSearchParams(window.location.search);
@@ -14,19 +14,17 @@
   // 토큰 확인 → 모드 분기
   var token = localStorage.getItem('fp_checkin_token');
   var savedEmpId = localStorage.getItem('fp_checkin_empId');
-
   var savedEmpName = localStorage.getItem('fp_checkin_empName');
 
   if (token && savedEmpId) {
-    // 등록된 기기 → 토큰 모드
+    // 등록된 기기 → 토큰 모드 (4개 이벤트 버튼)
     document.getElementById('formSection').style.display = 'none';
     document.getElementById('tokenSection').style.display = 'block';
     document.getElementById('tokenEmpName').textContent = savedEmpName || '';
     document.getElementById('tokenEmpId').textContent = '사번 ' + savedEmpId;
-    // 상태 확인 → 버튼 분기
     checkTokenStatus(token);
   } else {
-    // 최초 접속 → 사번 입력 모드
+    // 최초 접속 → 사번 입력 모드 (출근 등록 고정)
     var empIdInput = document.getElementById('empId');
     empIdInput.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') doCheckin();
@@ -36,7 +34,7 @@
 })();
 
 /**
- * 토큰 모드 — 출근 상태 확인 후 버튼 분기
+ * 4개 이벤트 버튼 상태 업데이트
  */
 async function checkTokenStatus(token) {
   if (!CONFIG.GAS_URL) return;
@@ -52,39 +50,53 @@ async function checkTokenStatus(token) {
       return;
     }
 
-    var btnArea = document.getElementById('tokenBtnArea');
-    var statusMsg = document.getElementById('tokenStatusMsg');
     var title = document.getElementById('tokenTitle');
-    var badge = document.getElementById('tokenBadge');
+    var statusMsg = document.getElementById('tokenStatusMsg');
 
-    if (status.checkedIn && status.hasReturn) {
-      // 이미 출근 + 귀소 완료
-      btnArea.innerHTML = '';
-      statusMsg.style.display = 'block';
-      statusMsg.style.color = '#166534';
-      statusMsg.textContent = '오늘 일정 모두 등록 완료. 수고하셨어요';
+    // 전체 인사
+    if (status.today && status.today.checkin && status.today.return) {
       title.textContent = '오늘도 수고하셨어요';
-      badge.textContent = '오늘 끝났어요';
-      badge.style.background = '#dcfce7';
-    } else if (status.canReturn) {
-      // 출근 완료 + 14시 이후 → 귀소 버튼
-      btnArea.innerHTML = '<button class="btn" onclick="doCheckin()" style="background:#166534; color:white; font-size:18px; padding:16px;">귀소</button>';
-      title.textContent = '귀소 등록';
-      badge.textContent = '출근 등록 완료';
-      badge.style.background = '#dcfce7';
-    } else if (status.checkedIn && !status.afterTwo) {
-      // 출근 완료 + 14시 이전
-      btnArea.innerHTML = '';
-      statusMsg.style.display = 'block';
-      statusMsg.style.color = '#854d0e';
-      statusMsg.textContent = '귀소는 오후 2시부터 등록할 수 있어요';
-      title.textContent = '출근 등록 완료';
-      badge.textContent = '출근 등록 완료';
-      badge.style.background = '#dcfce7';
+    } else if (status.today && status.today.checkin) {
+      title.textContent = '오늘도 화이팅';
+    } else {
+      title.textContent = '오늘도 좋은 하루';
     }
-    // else: 미출근 → 기본 출근 버튼 유지
+
+    // 각 버튼 상태
+    updateEventButton('출근', status);
+    updateEventButton('귀소', status);
+    updateEventButton('학습회', status);
+    updateEventButton('퇴근', status);
   } catch (e) {
     console.error('상태 확인 실패:', e);
+  }
+}
+
+function updateEventButton(eventType, status) {
+  var btn = document.querySelector('.event-btn[data-event="' + eventType + '"]');
+  var stateEl = document.getElementById('state-' + eventType);
+  if (!btn || !stateEl || !status.today) return;
+
+  var keyMap = { '출근': 'checkin', '귀소': 'return', '학습회': 'learning', '퇴근': 'leave' };
+  var key = keyMap[eventType];
+  var done = status.today[key];
+
+  // 학습회는 무제한 — 항상 활성
+  if (eventType === '학습회') {
+    btn.classList.remove('disabled');
+    stateEl.innerHTML = done ? '오늘 등록됨' : '&nbsp;';
+    return;
+  }
+
+  if (done) {
+    btn.classList.add('disabled');
+    stateEl.textContent = '등록 완료';
+  } else if (eventType === '귀소' && status.hourKST < 14) {
+    btn.classList.add('disabled');
+    stateEl.textContent = '14시 이후';
+  } else {
+    btn.classList.remove('disabled');
+    stateEl.innerHTML = '&nbsp;';
   }
 }
 
@@ -95,7 +107,6 @@ function generateToken() {
   if (crypto.randomUUID) {
     return crypto.randomUUID();
   }
-  // fallback
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
     var r = (Math.random() * 16) | 0;
     var v = c === 'x' ? r : (r & 0x3) | 0x8;
@@ -104,50 +115,69 @@ function generateToken() {
 }
 
 /**
- * 출근 처리 — 최초 등록 시 확인 단계 추가
+ * 토큰 모드 — 4개 버튼 클릭 진입점
+ */
+async function doEventCheckin(eventType) {
+  var btn = document.querySelector('.event-btn[data-event="' + eventType + '"]');
+  if (btn && btn.classList.contains('disabled')) {
+    // 비활성 버튼 클릭 시 안내
+    var stateEl = document.getElementById('state-' + eventType);
+    if (stateEl && stateEl.textContent === '등록 완료') {
+      showFlash('오늘 ' + eventType + '은 이미 등록되었어요');
+    } else if (eventType === '귀소') {
+      showFlash('귀소는 오후 2시부터 등록할 수 있어요');
+    }
+    return;
+  }
+  var token = localStorage.getItem('fp_checkin_token');
+  var empId = localStorage.getItem('fp_checkin_empId');
+  await processCheckin(token, empId, false, eventType);
+}
+
+function showFlash(msg) {
+  var statusMsg = document.getElementById('tokenStatusMsg');
+  if (!statusMsg) return;
+  statusMsg.style.display = 'block';
+  statusMsg.style.color = '#854d0e';
+  statusMsg.textContent = msg;
+  clearTimeout(showFlash._t);
+  showFlash._t = setTimeout(function () {
+    statusMsg.style.color = '#475569';
+  }, 2500);
+}
+
+/**
+ * 신규 등록 — 사번/이름 입력 → 확인 → 출근 등록 (출근 고정)
  */
 var _pendingToken = null;
 
 async function doCheckin() {
-  var params = new URLSearchParams(window.location.search);
-  var code = params.get('code');
-  var t = params.get('t');
-  var branch = params.get('branch') || 'default';
-
   var token = localStorage.getItem('fp_checkin_token');
-  var empId = null;
-  var isNewDevice = false;
-
   if (token) {
-    // 토큰 모드 — localStorage에서 사번 가져옴
-    empId = localStorage.getItem('fp_checkin_empId');
-  } else {
-    // 최초 등록 — 사번 + 이름 입력 → 확인 화면
-    var empIdInput = document.getElementById('empId');
-    var empNameInput = document.getElementById('empName');
-    empId = empIdInput.value.trim();
-    var empName = empNameInput.value.trim();
-
-    if (!empId || empId.length < 3) {
-      showFieldError('사번을 입력해주세요');
-      return;
-    }
-    if (!empName) {
-      showFieldError('이름을 입력해주세요');
-      return;
-    }
-
-    // 확인 화면 표시
-    _pendingToken = generateToken();
-    document.getElementById('confirmEmpId').textContent = empId;
-    document.getElementById('confirmEmpName').textContent = empName;
-    document.getElementById('formSection').style.display = 'none';
-    document.getElementById('confirmSection').style.display = 'block';
+    // 토큰 모드는 doEventCheckin으로 처리
     return;
   }
 
-  // 토큰 모드 — 바로 출근 처리
-  await processCheckin(token, empId, false);
+  // 신규 등록 — 사번 + 이름 입력 → 확인 화면
+  var empIdInput = document.getElementById('empId');
+  var empNameInput = document.getElementById('empName');
+  var empId = empIdInput.value.trim();
+  var empName = empNameInput.value.trim();
+
+  if (!empId || empId.length < 3) {
+    showFieldError('사번을 입력해주세요');
+    return;
+  }
+  if (!empName) {
+    showFieldError('이름을 입력해주세요');
+    return;
+  }
+
+  _pendingToken = generateToken();
+  document.getElementById('confirmEmpId').textContent = empId;
+  document.getElementById('confirmEmpName').textContent = empName;
+  document.getElementById('formSection').style.display = 'none';
+  document.getElementById('confirmSection').style.display = 'block';
 }
 
 function cancelConfirm() {
@@ -158,10 +188,11 @@ function cancelConfirm() {
 
 async function doCheckinConfirmed() {
   var empId = document.getElementById('empId').value.trim();
-  await processCheckin(_pendingToken, empId, true);
+  // 신규 등록은 '출근' 고정
+  await processCheckin(_pendingToken, empId, true, '출근');
 }
 
-async function processCheckin(token, empId, isNewDevice) {
+async function processCheckin(token, empId, isNewDevice, eventType) {
   var params = new URLSearchParams(window.location.search);
   var code = params.get('code');
   var t = params.get('t');
@@ -180,20 +211,21 @@ async function processCheckin(token, empId, isNewDevice) {
     return;
   }
 
-  // 로딩 표시
   showLoading();
 
-  var empName = isNewDevice ? document.getElementById('empName').value.trim() : (localStorage.getItem('fp_checkin_empName') || '');
+  var empName = isNewDevice
+    ? document.getElementById('empName').value.trim()
+    : (localStorage.getItem('fp_checkin_empName') || '');
 
   // GAS 미연결 — 로컬 테스트 모드
   if (!CONFIG.GAS_URL) {
-    console.log('[테스트 모드] 출근 데이터:', { empId, empName, token: token.slice(0, 8) + '...', branch });
+    console.log('[테스트 모드]', { empId, empName, token: token.slice(0, 8) + '...', branch, eventType });
     if (isNewDevice) {
       localStorage.setItem('fp_checkin_token', token);
       localStorage.setItem('fp_checkin_empId', empId);
       localStorage.setItem('fp_checkin_empName', empName);
     }
-    setTimeout(function () { showSuccess(empId, null, empName); }, 1000);
+    setTimeout(function () { showSuccess(empId, { type: eventType || '출근' }, empName); }, 1000);
     return;
   }
 
@@ -208,6 +240,7 @@ async function processCheckin(token, empId, isNewDevice) {
         empName: empName,
         token: token,
         isNewDevice: isNewDevice,
+        eventType: eventType || '',
         code: code,
         t: parseInt(t),
         branch: branch,
@@ -218,7 +251,6 @@ async function processCheckin(token, empId, isNewDevice) {
     var result = await response.json();
 
     if (result.success) {
-      // 최초 등록 성공 → 토큰 저장
       if (isNewDevice) {
         localStorage.setItem('fp_checkin_token', token);
         localStorage.setItem('fp_checkin_empId', empId);
@@ -226,7 +258,6 @@ async function processCheckin(token, empId, isNewDevice) {
       }
       showSuccess(empId, result, empName);
     } else if (result.error && result.error.indexOf('등록되지 않은 기기') >= 0) {
-      // 서버에서 토큰 삭제됨 → localStorage 초기화 + 자동 새로고침
       localStorage.removeItem('fp_checkin_token');
       localStorage.removeItem('fp_checkin_empId');
       localStorage.removeItem('fp_checkin_empName');
@@ -258,7 +289,11 @@ function showSuccess(empId, serverResult, empName) {
     String(now.getMinutes()).padStart(2, '0');
 
   var type = serverResult?.type || '출근';
-  var headerText = type === '귀소' ? '귀소 확인 완료됐어요' : '출근 확인되었습니다';
+  var headerText;
+  if (type === '귀소') headerText = '귀소 확인 완료됐어요';
+  else if (type === '학습회') headerText = '학습회 확인되었습니다';
+  else if (type === '퇴근') headerText = '퇴근 확인 완료됐어요';
+  else headerText = '출근 확인되었습니다';
 
   document.getElementById('resultTime').textContent = timeStr;
   document.querySelector('#successSection .result-message').textContent = headerText;
@@ -269,9 +304,10 @@ function showSuccess(empId, serverResult, empName) {
   // 인사말 (LLM 멘트는 #5에서 채워질 자리, 지금은 기본 문구)
   var greetingEl = document.getElementById('resultGreeting');
   if (greetingEl) {
-    greetingEl.textContent = type === '귀소'
-      ? '오늘 활동 고생 많으셨습니다.'
-      : '오늘 하루도 화이팅입니다.';
+    if (type === '귀소') greetingEl.textContent = '오늘 활동 고생 많으셨습니다.';
+    else if (type === '학습회') greetingEl.textContent = '학습 잘 다녀오세요.';
+    else if (type === '퇴근') greetingEl.textContent = '오늘 하루 수고 많으셨습니다.';
+    else greetingEl.textContent = '오늘 하루도 화이팅입니다.';
   }
 
   var section = document.getElementById('successSection');

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FP 모닝 브리핑</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=2.7">
 </head>
 <body>
   <div class="checkin-page">
@@ -15,17 +15,34 @@
         <div class="logo">☀️</div>
         <h1 id="tokenTitle">오늘도 좋은 하루</h1>
         <div class="token-user-info">
-          <span class="token-badge" id="tokenBadge">자동 인증</span>
           <div class="token-empname" id="tokenEmpName"></div>
-        <div class="token-empid" id="tokenEmpId"></div>
+          <div class="token-empid" id="tokenEmpId"></div>
         </div>
 
-        <div id="tokenBtnArea">
-          <button class="btn btn-primary" onclick="doCheckin()">
-            출근
+        <div class="event-grid">
+          <button class="event-btn" data-event="출근" onclick="doEventCheckin('출근')">
+            <span class="event-icon">🌅</span>
+            <span class="event-name">출근</span>
+            <span class="event-state" id="state-출근">&nbsp;</span>
+          </button>
+          <button class="event-btn" data-event="귀소" onclick="doEventCheckin('귀소')">
+            <span class="event-icon">🏢</span>
+            <span class="event-name">귀소</span>
+            <span class="event-state" id="state-귀소">&nbsp;</span>
+          </button>
+          <button class="event-btn" data-event="학습회" onclick="doEventCheckin('학습회')">
+            <span class="event-icon">📚</span>
+            <span class="event-name">학습회</span>
+            <span class="event-state" id="state-학습회">&nbsp;</span>
+          </button>
+          <button class="event-btn" data-event="퇴근" onclick="doEventCheckin('퇴근')">
+            <span class="event-icon">🌙</span>
+            <span class="event-name">퇴근</span>
+            <span class="event-state" id="state-퇴근">&nbsp;</span>
           </button>
         </div>
-        <p id="tokenStatusMsg" style="display:none; margin-top:12px; font-size:15px; font-weight:600;"></p>
+
+        <p id="tokenStatusMsg" style="display:none; margin-top:8px; font-size:14px; color:#475569;"></p>
       </div>
 
       <!-- 사번 입력 모드 (최초 등록) -->
@@ -115,8 +132,8 @@
     </div>
   </div>
 
-  <script src="js/config.js?v=2.1"></script>
-  <script src="js/totp.js?v=2.1"></script>
-  <script src="js/checkin.js?v=2.1"></script>
+  <script src="js/config.js?v=2.7"></script>
+  <script src="js/totp.js?v=2.7"></script>
+  <script src="js/checkin.js?v=2.7"></script>
 </body>
 </html>
