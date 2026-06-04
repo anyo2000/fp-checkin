@@ -12,8 +12,8 @@ const CONFIG = {
   // GAS 웹앱 URL
   GAS_URL: 'https://script.google.com/macros/s/AKfycbwubJQXv1MHFhYOJPE8qRKKxDb0ZgSPpaqq9DXW0QekxuocSBRcA0bCypdkwAm1Su8/exec',
 
-  // 체크인 페이지 베이스 URL
-  BASE_URL: window.location.origin + '/fp-checkin',
+  // 체크인 페이지 베이스 URL (display.html과 같은 디렉토리 기준 — 어떤 도메인이든 자동 적응)
+  BASE_URL: window.location.origin + window.location.pathname.replace(/\/[^/]*$/, ''),
 
   // 출근 상태 기본 기준
   DEFAULT_NORMAL_END: '09:00',
