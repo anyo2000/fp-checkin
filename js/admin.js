@@ -839,8 +839,8 @@ function copyQRUrl(codeId, btn) {
 // ========== CSV 다운로드 ==========
 
 async function sendTodayEmail() {
-  if (todayData.length === 0) { alert('전송할 데이터가 없습니다.'); return; }
-  var email = prompt('수신 이메일 주소를 입력하세요:');
+  if (todayData.length === 0) { alert('보낼 데이터가 없어요.'); return; }
+  var email = prompt('받을 이메일 주소를 입력해주세요:');
   if (!email) return;
   var date = document.getElementById('todayDate').value;
   var code = new URLSearchParams(location.search).get('code') || '';
@@ -850,7 +850,7 @@ async function sendTodayEmail() {
       body: JSON.stringify({ action: 'sendEmail', type: 'today', date: date, code: code, email: email }),
     });
     var result = await res.json();
-    if (result.success) alert('메일이 전송되었습니다.');
+    if (result.success) alert('메일을 보냈어요.');
     else alert('전송 실패: ' + (result.error || '알 수 없는 오류'));
   } catch (err) {
     alert('전송 실패: ' + err.message);
@@ -858,11 +858,11 @@ async function sendTodayEmail() {
 }
 
 async function sendMonthlyEmail() {
-  if (_monthlySummaries.length === 0) { alert('전송할 데이터가 없습니다.'); return; }
-  var email = prompt('수신 이메일 주소를 입력하세요:');
+  if (_monthlySummaries.length === 0) { alert('보낼 데이터가 없어요.'); return; }
+  var email = prompt('받을 이메일 주소를 입력해주세요:');
   if (!email) return;
   var month = document.getElementById('monthPicker').value;
-  if (!month) { alert('월을 먼저 선택하세요.'); return; }
+  if (!month) { alert('월을 먼저 선택해주세요.'); return; }
   var code = new URLSearchParams(location.search).get('code') || '';
   try {
     var res = await fetch(CONFIG.GAS_URL, {
@@ -870,7 +870,7 @@ async function sendMonthlyEmail() {
       body: JSON.stringify({ action: 'sendEmail', type: 'monthly', month: month, code: code, email: email }),
     });
     var result = await res.json();
-    if (result.success) alert('메일이 전송되었습니다.');
+    if (result.success) alert('메일을 보냈어요.');
     else alert('전송 실패: ' + (result.error || '알 수 없는 오류'));
   } catch (err) {
     alert('전송 실패: ' + err.message);

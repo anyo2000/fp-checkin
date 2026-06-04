@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>출근 체크</title>
+  <title>FP 모닝 브리핑</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -12,8 +12,8 @@
 
       <!-- 토큰 인증 모드 (등록된 기기) -->
       <div id="tokenSection" style="display: none;">
-        <div class="logo">📋</div>
-        <h1 id="tokenTitle">출근 체크</h1>
+        <div class="logo">☀️</div>
+        <h1 id="tokenTitle">오늘도 좋은 하루</h1>
         <div class="token-user-info">
           <span class="token-badge" id="tokenBadge">자동 인증</span>
           <div class="token-empname" id="tokenEmpName"></div>
@@ -30,8 +30,8 @@
 
       <!-- 사번 입력 모드 (최초 등록) -->
       <div id="formSection">
-        <div class="logo">📋</div>
-        <h1>출근 체크</h1>
+        <div class="logo">☀️</div>
+        <h1>출근 등록</h1>
 
         <div class="form-group">
           <label class="label">사번 입력</label>
@@ -80,7 +80,7 @@
             <div id="confirmEmpName" style="font-size:20px; font-weight:700;"></div>
           </div>
         </div>
-        <p style="font-size:14px; color:#854d0e; margin-bottom:16px;">위 정보가 맞는지 확인해주세요.<br>등록 후에는 변경이 어렵습니다.</p>
+        <p style="font-size:14px; color:#6b7280; margin-bottom:16px;">정보가 맞는지 확인해주세요.<br>변경이 필요하시면 관리자에게 문의해주세요.</p>
         <div style="display:flex; gap:8px;">
           <button class="btn" onclick="cancelConfirm()" style="flex:1; background:#e5e7eb; color:#333; font-size:16px; padding:14px;">수정</button>
           <button class="btn btn-primary" onclick="doCheckinConfirmed()" style="flex:2; font-size:16px; padding:14px;">확인 후 출근</button>
@@ -96,15 +96,16 @@
       <!-- 성공 결과 -->
       <div id="successSection" class="result">
         <div class="result-icon">✅</div>
-        <div class="result-message">출근 완료</div>
+        <div class="result-message">출근 확인되었습니다</div>
         <div class="result-time" id="resultTime">08:42</div>
         <div class="result-detail" id="resultDetail"></div>
+        <div class="result-greeting" id="resultGreeting" style="margin-top:16px; font-size:15px; color:#475569; line-height:1.6;"></div>
       </div>
 
       <!-- 실패 결과 -->
       <div id="errorSection" class="result result-error">
-        <div class="result-icon">❌</div>
-        <div class="result-message" id="errorTitle">QR이 만료되었습니다</div>
+        <div class="result-icon">⚠️</div>
+        <div class="result-message" id="errorTitle">QR이 새로 바뀌었어요</div>
         <div class="result-detail">태블릿의 QR을 다시 스캔해주세요</div>
         <button class="btn btn-primary" style="margin-top: 24px;" onclick="location.reload()">
           다시 시도

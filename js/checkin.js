@@ -7,7 +7,7 @@
 
   // QR 파라미터 없으면 안내
   if (!code || !t) {
-    showError('직접 접속 불가', '태블릿의 QR 코드를 카메라로 스캔해주세요.');
+    showError('QR로 들어와주세요', '지점 태블릿의 QR을 폰 카메라로 스캔해주세요.');
     return;
   }
 
@@ -62,24 +62,24 @@ async function checkTokenStatus(token) {
       btnArea.innerHTML = '';
       statusMsg.style.display = 'block';
       statusMsg.style.color = '#166534';
-      statusMsg.textContent = '오늘 출근/귀소 모두 완료되었습니다';
-      title.textContent = '완료';
-      badge.textContent = '출근·귀소 완료';
+      statusMsg.textContent = '오늘 일정 모두 등록 완료. 수고하셨어요';
+      title.textContent = '오늘도 수고하셨어요';
+      badge.textContent = '오늘 끝났어요';
       badge.style.background = '#dcfce7';
     } else if (status.canReturn) {
       // 출근 완료 + 14시 이후 → 귀소 버튼
       btnArea.innerHTML = '<button class="btn" onclick="doCheckin()" style="background:#166534; color:white; font-size:18px; padding:16px;">귀소</button>';
-      title.textContent = '귀소 체크';
-      badge.textContent = '출근 완료';
+      title.textContent = '귀소 등록';
+      badge.textContent = '출근 등록 완료';
       badge.style.background = '#dcfce7';
     } else if (status.checkedIn && !status.afterTwo) {
       // 출근 완료 + 14시 이전
       btnArea.innerHTML = '';
       statusMsg.style.display = 'block';
       statusMsg.style.color = '#854d0e';
-      statusMsg.textContent = '귀소는 14시 이후에 가능합니다';
-      title.textContent = '출근 완료';
-      badge.textContent = '출근 완료';
+      statusMsg.textContent = '귀소는 오후 2시부터 등록할 수 있어요';
+      title.textContent = '출근 등록 완료';
+      badge.textContent = '출근 등록 완료';
       badge.style.background = '#dcfce7';
     }
     // else: 미출근 → 기본 출근 버튼 유지
@@ -176,7 +176,7 @@ async function processCheckin(token, empId, isNewDevice) {
   );
 
   if (!verification.valid) {
-    showError('QR이 만료되었습니다', '태블릿의 QR을 다시 스캔해주세요.');
+    showError('QR이 새로 바뀌었어요', '태블릿의 QR을 다시 스캔해주세요.');
     return;
   }
 
@@ -233,7 +233,7 @@ async function processCheckin(token, empId, isNewDevice) {
       location.reload();
       return;
     } else {
-      showError(result.error || '출근 처리 실패', '다시 시도해주세요.');
+      showError(result.error || '등록 처리에 실패했어요', '잠시 후 다시 시도해주세요.');
     }
   } catch (err) {
     console.error('GAS 통신 에러:', err);
@@ -258,13 +258,21 @@ function showSuccess(empId, serverResult, empName) {
     String(now.getMinutes()).padStart(2, '0');
 
   var type = serverResult?.type || '출근';
+  var headerText = type === '귀소' ? '귀소 확인 완료됐어요' : '출근 확인되었습니다';
 
   document.getElementById('resultTime').textContent = timeStr;
-  document.querySelector('#successSection .result-message').textContent =
-    type + ' 완료';
+  document.querySelector('#successSection .result-message').textContent = headerText;
   var detailText = (empName ? empName + ' | ' : '') + '사번 ' + empId;
   if (serverResult?.scanCount) detailText += ' | 오늘 ' + serverResult.scanCount + '번째';
   document.getElementById('resultDetail').textContent = detailText;
+
+  // 인사말 (LLM 멘트는 #5에서 채워질 자리, 지금은 기본 문구)
+  var greetingEl = document.getElementById('resultGreeting');
+  if (greetingEl) {
+    greetingEl.textContent = type === '귀소'
+      ? '오늘 활동 고생 많으셨습니다.'
+      : '오늘 하루도 화이팅입니다.';
+  }
 
   var section = document.getElementById('successSection');
   section.style.display = 'block';
