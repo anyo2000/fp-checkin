@@ -285,7 +285,7 @@ function renderBreadcrumb() {
   var todayDateEl = document.getElementById('todayDate');
   todayDateEl.value = dateStr;
   todayDateEl.max = dateStr; // 미래 날짜 선택 방지
-  todayDateEl.addEventListener('change', loadToday);
+  todayDateEl.addEventListener('change', function () { loadToday(); loadBriefing(); });
   document.getElementById('monthPicker').value = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
   document.getElementById('monthPicker').addEventListener('change', loadMonthly);
 
@@ -299,7 +299,55 @@ function renderBreadcrumb() {
 
   // 데이터 로드
   loadToday();
+  loadBriefing();
 })();
+
+async function loadBriefing() {
+  var card = document.getElementById('aiBriefingCard');
+  if (!card || !CONFIG.GAS_URL || !CODE) return;
+
+  var date = document.getElementById('todayDate').value || '';
+  card.style.display = 'block';
+  card.innerHTML = '<div class="ai-briefing"><div class="ai-briefing-header"><span class="ai-briefing-badge">AI 모닝 브리핑</span><span class="ai-briefing-meta">' + (ADMIN_NODE ? ADMIN_NODE.name : '') + ' · ' + date + '</span></div><div class="ai-briefing-body ai-briefing-loading">AI가 오늘 현황을 분석하는 중…</div></div>';
+
+  try {
+    var res = await fetch(CONFIG.GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'briefing', code: CODE, date: date }),
+    });
+    var result = await res.json();
+    if (result.success && result.briefing) {
+      var s = result.stats || {};
+      card.innerHTML =
+        '<div class="ai-briefing">' +
+          '<div class="ai-briefing-header">' +
+            '<span class="ai-briefing-badge">AI 모닝 브리핑</span>' +
+            '<span class="ai-briefing-meta">' + (ADMIN_NODE ? ADMIN_NODE.name : '') + ' · ' + date + '</span>' +
+          '</div>' +
+          '<div class="ai-briefing-body">' + escapeHtml(result.briefing).replace(/\n/g, '<br>') + '</div>' +
+          '<div class="ai-briefing-stats">' +
+            '<span>출근 <b>' + (s.totalCheckin || 0) + '</b></span>' +
+            '<span>정상 <b>' + (s.normalCount || 0) + '</b></span>' +
+            '<span>지각 <b>' + (s.lateCount || 0) + '</b></span>' +
+            '<span>귀소 <b>' + (s.totalReturn || 0) + '</b></span>' +
+          '</div>' +
+        '</div>';
+    } else {
+      card.style.display = 'none';
+      console.warn('브리핑 생성 실패:', result.error);
+    }
+  } catch (e) {
+    card.style.display = 'none';
+    console.error('브리핑 요청 실패:', e);
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
 
 async function loadOrgTree() {
   if (!CONFIG.GAS_URL) return;
@@ -382,7 +430,86 @@ function switchTab(tabName) {
   if (tabName === 'monthly') loadMonthly();
   if (tabName === 'alert') loadAlerts();
   if (tabName === 'manual') loadAuditLog();
-  if (tabName === 'qrsetup') renderQRSetup();
+  if (tabName === 'qrsetup') { renderQRSetup(); loadBranchLocationStatus(); }
+}
+
+async function loadBranchLocationStatus() {
+  var statusEl = document.getElementById('locationStatus');
+  if (!statusEl || !CONFIG.GAS_URL || !CODE) return;
+  statusEl.textContent = '위치 등록 상태 확인 중…';
+  try {
+    var res = await fetch(CONFIG.GAS_URL + '?action=branchLocation&code=' + encodeURIComponent(CODE));
+    var data = await res.json();
+    if (data.exists) {
+      statusEl.innerHTML = '✅ 등록됨 — 위도 ' + data.lat.toFixed(6) + ', 경도 ' + data.lng.toFixed(6) + ' / 반경 ' + data.radius + 'm';
+      statusEl.style.color = '#166534';
+      document.getElementById('locationRadius').value = data.radius;
+    } else {
+      statusEl.innerHTML = '⚠️ 미등록 — 지점 안에서 등록해주세요. 미등록 지점은 위치 검증 없이 출근됩니다.';
+      statusEl.style.color = '#854d0e';
+    }
+  } catch (e) {
+    statusEl.textContent = '상태 확인 실패';
+    statusEl.style.color = '#dc2626';
+  }
+}
+
+async function registerBranchLocation() {
+  var resultEl = document.getElementById('locationResult');
+  if (!CODE) return;
+  var radius = parseFloat(document.getElementById('locationRadius').value);
+  if (!isFinite(radius) || radius <= 0) {
+    resultEl.style.color = '#dc2626';
+    resultEl.textContent = '반경 값을 확인해주세요';
+    return;
+  }
+
+  resultEl.style.color = '#475569';
+  resultEl.textContent = '현재 위치 확인 중…';
+
+  if (!navigator.geolocation) {
+    resultEl.style.color = '#dc2626';
+    resultEl.textContent = '이 기기는 GPS를 지원하지 않아요';
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    async function (pos) {
+      try {
+        var res = await fetch(CONFIG.GAS_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({
+            action: 'setBranchLocation',
+            code: CODE,
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            radius: radius,
+          }),
+        });
+        var result = await res.json();
+        if (result.success) {
+          resultEl.style.color = '#166534';
+          resultEl.innerHTML = '✅ 등록 완료 — 위도 ' + result.lat.toFixed(6) + ', 경도 ' + result.lng.toFixed(6) + ' / 반경 ' + result.radius + 'm';
+          loadBranchLocationStatus();
+        } else {
+          resultEl.style.color = '#dc2626';
+          resultEl.textContent = '등록 실패 — ' + (result.error || '알 수 없는 오류');
+        }
+      } catch (err) {
+        resultEl.style.color = '#dc2626';
+        resultEl.textContent = '서버 연결 실패';
+      }
+    },
+    function (err) {
+      resultEl.style.color = '#dc2626';
+      if (err.code === 1) resultEl.textContent = '위치 권한이 차단되어 있어요. Safari 설정에서 허용해주세요.';
+      else if (err.code === 2) resultEl.textContent = '위치 신호가 약해요. 창가에서 다시 시도해주세요.';
+      else if (err.code === 3) resultEl.textContent = '위치 확인이 너무 오래 걸려요. 다시 시도해주세요.';
+      else resultEl.textContent = '위치를 가져오지 못했어요';
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
 }
 
 // ========== 시간 포맷 ==========

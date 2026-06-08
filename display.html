@@ -4,31 +4,63 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FP 모닝 브리핑 — QR</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="css/style.css?v=3.2">
   <script src="js/qrcode.min.js"></script>
 </head>
 <body>
   <div class="display-page">
     <button class="fullscreen-btn" onclick="toggleFullscreen()">전체화면</button>
 
-    <div class="branch-name" id="branchName">지점명</div>
-    <div class="title">출근·귀소 등록</div>
+    <!-- 상단: 로고 + 지점 배지 -->
+    <header class="display-header">
+      <div class="brand">
+        <span class="brand-dots">
+          <span class="dot dot-1"></span>
+          <span class="dot dot-2"></span>
+          <span class="dot dot-3"></span>
+        </span>
+        <span class="brand-name">FP 모닝 브리핑</span>
+      </div>
+      <div class="branch-chip">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        <span id="branchName">지점명</span>
+      </div>
+    </header>
 
-    <div class="qr-wrapper">
-      <div id="qrContainer" style="width:280px;height:280px;"></div>
-    </div>
+    <!-- 중앙: 타이틀 + QR -->
+    <main class="display-main">
+      <h1 class="display-title">QR을 스캔해주세요</h1>
+      <p class="display-subtitle">폰 카메라로 QR을 화면 안에 맞춰주세요</p>
 
-    <div class="timer-bar">
-      <div class="timer-bar-fill" id="timerBarFill"></div>
-    </div>
+      <div class="qr-frame">
+        <div class="qr-corner qr-corner-tl"></div>
+        <div class="qr-corner qr-corner-tr"></div>
+        <div class="qr-corner qr-corner-bl"></div>
+        <div class="qr-corner qr-corner-br"></div>
+        <div class="qr-wrapper">
+          <div id="qrContainer" style="width:280px;height:280px;"></div>
+        </div>
+      </div>
 
-    <div class="timer-text" id="timerText">15</div>
+      <div class="timer-row">
+        <span class="timer-label">QR 갱신까지</span>
+        <span class="timer-text" id="timerText">00:00</span>
+      </div>
+      <div class="timer-bar">
+        <div class="timer-bar-fill" id="timerBarFill"></div>
+      </div>
+    </main>
 
-    <div class="clock" id="clock">--:--:--</div>
+    <!-- 하단: 시계 + 날짜 -->
+    <footer class="display-footer">
+      <div class="clock" id="clock">--:--</div>
+      <div class="date" id="date">--월 --일 (--)</div>
+    </footer>
   </div>
 
-  <script src="js/config.js?v=2.8"></script>
-  <script src="js/totp.js?v=2.8"></script>
-  <script src="js/display.js?v=2.8"></script>
+  <script src="js/config.js?v=3.2"></script>
+  <script src="js/totp.js?v=3.2"></script>
+  <script src="js/display.js?v=3.2"></script>
 </body>
 </html>

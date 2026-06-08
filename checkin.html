@@ -4,136 +4,181 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FP 모닝 브리핑</title>
-  <link rel="stylesheet" href="css/style.css?v=2.7">
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="css/style.css?v=3.2">
 </head>
 <body>
   <div class="checkin-page">
-    <div class="card" style="width: 100%; max-width: 400px;">
 
-      <!-- 토큰 인증 모드 (등록된 기기) -->
-      <div id="tokenSection" style="display: none;">
-        <div class="logo">☀️</div>
-        <h1 id="tokenTitle">오늘도 좋은 하루</h1>
-        <div class="token-user-info">
-          <div class="token-empname" id="tokenEmpName"></div>
-          <div class="token-empid" id="tokenEmpId"></div>
+    <!-- 상단 브랜드 -->
+    <header class="checkin-header">
+      <div class="brand">
+        <span class="brand-dots">
+          <span class="dot dot-1"></span>
+          <span class="dot dot-2"></span>
+          <span class="dot dot-3"></span>
+        </span>
+        <span class="brand-name">FP 모닝 브리핑</span>
+      </div>
+    </header>
+
+    <main class="checkin-main">
+
+      <!-- 토큰 모드: 등록된 기기 -->
+      <section id="tokenSection" class="screen" style="display:none;">
+        <div class="greeting-block">
+          <p class="greeting-sub" id="tokenTitle">좋은 아침이에요</p>
+          <h1 class="greeting-name"><span id="tokenEmpName">홍길동</span> <span class="greeting-suffix">님</span></h1>
+          <p class="greeting-empid" id="tokenEmpId">사번 0000000</p>
         </div>
 
+        <!-- AI 인사말 카드 -->
+        <div class="ai-greet-card">
+          <span class="ai-badge">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            AI 모닝 인사
+          </span>
+          <p class="ai-greet-text" id="tokenAiGreeting">오늘 인사말을 준비하고 있어요…</p>
+        </div>
+
+        <!-- 이번주 출근 -->
+        <div class="weekly-card">
+          <div class="weekly-header">
+            <span class="weekly-title">이번 주 출근</span>
+            <span class="weekly-count" id="weeklyCount">- / 5</span>
+          </div>
+          <div class="weekly-days" id="weeklyDays"></div>
+        </div>
+
+        <!-- 오늘 등록 -->
+        <h2 class="section-title">오늘 등록</h2>
         <div class="event-grid">
-          <button class="event-btn" data-event="출근" onclick="doEventCheckin('출근')">
-            <span class="event-icon">🌅</span>
+          <button class="event-btn event-primary" data-event="출근" onclick="doEventCheckin('출근')">
+            <span class="event-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+            </span>
             <span class="event-name">출근</span>
             <span class="event-state" id="state-출근">&nbsp;</span>
           </button>
           <button class="event-btn" data-event="귀소" onclick="doEventCheckin('귀소')">
-            <span class="event-icon">🏢</span>
+            <span class="event-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            </span>
             <span class="event-name">귀소</span>
             <span class="event-state" id="state-귀소">&nbsp;</span>
           </button>
           <button class="event-btn" data-event="학습회" onclick="doEventCheckin('학습회')">
-            <span class="event-icon">📚</span>
+            <span class="event-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            </span>
             <span class="event-name">학습회</span>
             <span class="event-state" id="state-학습회">&nbsp;</span>
           </button>
           <button class="event-btn" data-event="퇴근" onclick="doEventCheckin('퇴근')">
-            <span class="event-icon">🌙</span>
+            <span class="event-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            </span>
             <span class="event-name">퇴근</span>
             <span class="event-state" id="state-퇴근">&nbsp;</span>
           </button>
         </div>
 
-        <p id="tokenStatusMsg" style="display:none; margin-top:8px; font-size:14px; color:#475569;"></p>
-      </div>
+        <p id="tokenStatusMsg" style="display:none;"></p>
+      </section>
 
-      <!-- 사번 입력 모드 (최초 등록) -->
-      <div id="formSection">
-        <div class="logo">☀️</div>
-        <h1>출근 등록</h1>
+      <!-- 신규 등록: 사번 입력 -->
+      <section id="formSection" class="screen">
+        <div class="form-card">
+          <h1 class="form-title">출근 등록</h1>
+          <p class="form-subtitle">첫 등록이에요. 사번과 이름을 입력해주세요.</p>
 
-        <div class="form-group">
-          <label class="label">사번 입력</label>
-          <input
-            type="tel"
-            id="empId"
-            class="input-field"
-            placeholder="0000000"
-            maxlength="10"
-            inputmode="numeric"
-            autocomplete="off"
-          >
-        </div>
-
-        <div class="form-group">
-          <label class="label">이름</label>
-          <input
-            type="text"
-            id="empName"
-            class="input-field"
-            placeholder="홍길동"
-            maxlength="10"
-            autocomplete="off"
-            style="letter-spacing: normal;"
-          >
-        </div>
-
-        <button class="btn btn-primary" id="checkinBtn" onclick="doCheckin()">
-          출근
-        </button>
-
-        <p id="errorMsg" style="color: #dc2626; margin-top: 12px; font-size: 14px; display: none;"></p>
-      </div>
-
-      <!-- 등록 정보 확인 (최초 등록 시) -->
-      <div id="confirmSection" style="display: none;">
-        <div class="logo">📋</div>
-        <h1>등록 정보 확인</h1>
-        <div style="background:#f8fafc; border-radius:12px; padding:20px; margin:16px 0; text-align:left;">
-          <div style="margin-bottom:12px;">
-            <span style="font-size:13px; color:#6b7280;">사번</span>
-            <div id="confirmEmpId" style="font-size:20px; font-weight:700; letter-spacing:2px;"></div>
+          <div class="form-group">
+            <label class="label">사번</label>
+            <input type="tel" id="empId" class="input-field" placeholder="0000000" maxlength="10" inputmode="numeric" autocomplete="off">
           </div>
-          <div>
-            <span style="font-size:13px; color:#6b7280;">이름</span>
-            <div id="confirmEmpName" style="font-size:20px; font-weight:700;"></div>
+
+          <div class="form-group">
+            <label class="label">이름</label>
+            <input type="text" id="empName" class="input-field input-text" placeholder="홍길동" maxlength="10" autocomplete="off">
+          </div>
+
+          <button class="btn btn-primary btn-block" id="checkinBtn" onclick="doCheckin()">출근 등록</button>
+
+          <p class="form-note">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 1.892.402 3.13 1.5 4.5L12 22l6.5-7.5c1.098-1.37 1.5-2.608 1.5-4.5a8 8 0 0 0-8-8z"/></svg>
+            거리 확인을 위해 GPS를 사용합니다. 위치 정보는 저장되지 않습니다.
+          </p>
+          <p id="errorMsg" class="form-error" style="display: none;"></p>
+        </div>
+      </section>
+
+      <!-- 등록 정보 확인 -->
+      <section id="confirmSection" class="screen" style="display:none;">
+        <div class="form-card">
+          <h1 class="form-title">등록 정보 확인</h1>
+          <div class="confirm-info">
+            <div class="confirm-row">
+              <span class="confirm-label">사번</span>
+              <span class="confirm-value" id="confirmEmpId"></span>
+            </div>
+            <div class="confirm-row">
+              <span class="confirm-label">이름</span>
+              <span class="confirm-value" id="confirmEmpName"></span>
+            </div>
+          </div>
+          <p class="form-note">정보가 맞는지 확인해주세요. 변경이 필요하면 관리자에게 문의해주세요.</p>
+          <div class="confirm-actions">
+            <button class="btn btn-secondary" onclick="cancelConfirm()">수정</button>
+            <button class="btn btn-primary" onclick="doCheckinConfirmed()">확인 후 출근</button>
           </div>
         </div>
-        <p style="font-size:14px; color:#6b7280; margin-bottom:16px;">정보가 맞는지 확인해주세요.<br>변경이 필요하시면 관리자에게 문의해주세요.</p>
-        <div style="display:flex; gap:8px;">
-          <button class="btn" onclick="cancelConfirm()" style="flex:1; background:#e5e7eb; color:#333; font-size:16px; padding:14px;">수정</button>
-          <button class="btn btn-primary" onclick="doCheckinConfirmed()" style="flex:2; font-size:16px; padding:14px;">확인 후 출근</button>
-        </div>
-      </div>
+      </section>
 
       <!-- 로딩 -->
-      <div id="loadingSection" style="display: none;">
-        <div class="spinner show"></div>
-        <p style="color: #6b7280; margin-top: 16px;">처리 중...</p>
-      </div>
+      <section id="loadingSection" class="screen" style="display:none;">
+        <div class="loading-card">
+          <div class="spinner show"></div>
+          <p>처리 중이에요…</p>
+        </div>
+      </section>
 
       <!-- 성공 결과 -->
-      <div id="successSection" class="result">
-        <div class="result-icon">✅</div>
-        <div class="result-message">출근 확인되었습니다</div>
-        <div class="result-time" id="resultTime">08:42</div>
-        <div class="result-detail" id="resultDetail"></div>
-        <div class="result-greeting" id="resultGreeting" style="margin-top:16px; font-size:15px; color:#475569; line-height:1.6;"></div>
-      </div>
+      <section id="successSection" class="result">
+        <div class="result-card">
+          <div class="result-icon-circle">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </div>
+          <h2 class="result-message">출근 확인되었습니다</h2>
+          <div class="result-time" id="resultTime">08:42</div>
+          <div class="result-detail" id="resultDetail"></div>
+
+          <div class="ai-greet-card result-greet">
+            <span class="ai-badge">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+              AI 한마디
+            </span>
+            <p class="ai-greet-text" id="resultGreeting"></p>
+          </div>
+        </div>
+      </section>
 
       <!-- 실패 결과 -->
-      <div id="errorSection" class="result result-error">
-        <div class="result-icon">⚠️</div>
-        <div class="result-message" id="errorTitle">QR이 새로 바뀌었어요</div>
-        <div class="result-detail">태블릿의 QR을 다시 스캔해주세요</div>
-        <button class="btn btn-primary" style="margin-top: 24px;" onclick="location.reload()">
-          다시 시도
-        </button>
-      </div>
+      <section id="errorSection" class="result result-error">
+        <div class="result-card">
+          <div class="result-icon-circle result-icon-error">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
+          <h2 class="result-message" id="errorTitle">QR이 새로 바뀌었어요</h2>
+          <div class="result-detail">태블릿의 QR을 다시 스캔해주세요</div>
+          <button class="btn btn-primary btn-block" onclick="location.reload()" style="margin-top:24px;">다시 시도</button>
+        </div>
+      </section>
 
-    </div>
+    </main>
   </div>
 
-  <script src="js/config.js?v=2.8"></script>
-  <script src="js/totp.js?v=2.8"></script>
-  <script src="js/checkin.js?v=2.8"></script>
+  <script src="js/config.js?v=3.2"></script>
+  <script src="js/totp.js?v=3.2"></script>
+  <script src="js/checkin.js?v=3.2"></script>
 </body>
 </html>

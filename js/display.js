@@ -5,6 +5,7 @@
   const timerBarFill = document.getElementById('timerBarFill');
   const timerText = document.getElementById('timerText');
   const clockEl = document.getElementById('clock');
+  const dateEl = document.getElementById('date');
   const branchNameEl = document.getElementById('branchName');
 
   // URL 파라미터에서 코드 추출 (code 또는 branch)
@@ -54,17 +55,16 @@
           text: checkinURL,
           width: 280,
           height: 280,
-          colorDark: '#0f172a',
+          colorDark: '#001E4E',
           colorLight: '#ffffff',
           correctLevel: QRCode.CorrectLevel.M,
         });
       }
     }
 
-    // 타이머 — MM:SS 형식
     var mins = Math.floor(remaining / 60);
     var secs = remaining % 60;
-    timerText.textContent = mins + ':' + String(secs).padStart(2, '0');
+    timerText.textContent = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
 
     var percent = (remaining / CONFIG.WINDOW_SEC) * 100;
     timerBarFill.style.width = percent + '%';
@@ -72,9 +72,9 @@
     if (remaining <= 30) {
       timerBarFill.style.background = '#ef4444';
     } else if (remaining <= 60) {
-      timerBarFill.style.background = '#f59e0b';
+      timerBarFill.style.background = '#FF6600';
     } else {
-      timerBarFill.style.background = '#3b82f6';
+      timerBarFill.style.background = '#FF6600';
     }
   }
 
@@ -82,8 +82,13 @@
     const now = new Date();
     const h = String(now.getHours()).padStart(2, '0');
     const m = String(now.getMinutes()).padStart(2, '0');
-    const s = String(now.getSeconds()).padStart(2, '0');
-    clockEl.textContent = h + ':' + m + ':' + s;
+    clockEl.textContent = h + ':' + m;
+
+    if (dateEl) {
+      const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+      const wd = weekdays[now.getDay()];
+      dateEl.textContent = (now.getMonth() + 1) + '월 ' + now.getDate() + '일 (' + wd + ')';
+    }
   }
 
   updateQR();

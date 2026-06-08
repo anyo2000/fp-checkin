@@ -71,6 +71,110 @@ function getThresholdConfig(branchCode) {
   return { normalEnd: DEFAULT_NORMAL_END, lateEnd: DEFAULT_LATE_END };
 }
 
+// ========== 지점 위치 (GPS 검증) ==========
+
+var DEFAULT_RADIUS_M = 100;
+
+// 지점설정 컬럼: branchCode(0), branchName(1), morningStart(2), morningEnd(3), lat(4), lng(5), radius(6)
+function getBranchLocation(branchCode) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('지점설정');
+  if (!sheet) return null;
+
+  var data = sheet.getDataRange().getValues();
+  function readRow(row) {
+    var lat = parseFloat(row[4]);
+    var lng = parseFloat(row[5]);
+    var radius = parseFloat(row[6]);
+    if (!isFinite(lat) || !isFinite(lng) || lat === 0 || lng === 0) return null;
+    return { lat: lat, lng: lng, radius: isFinite(radius) && radius > 0 ? radius : DEFAULT_RADIUS_M };
+  }
+
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim() === branchCode) {
+      var loc = readRow(data[i]);
+      if (loc) return loc;
+      break;
+    }
+  }
+
+  // 상위 조직(예: 사업소 → 부모 지점) 상속
+  var node = getOrgNode(branchCode);
+  if (node && node.parent) {
+    for (var j = 1; j < data.length; j++) {
+      if (String(data[j][0]).trim() === node.parent) {
+        var parentLoc = readRow(data[j]);
+        if (parentLoc) return parentLoc;
+        break;
+      }
+    }
+  }
+  return null;
+}
+
+function haversineMeters(lat1, lng1, lat2, lng2) {
+  var R = 6371000;
+  var toRad = function (deg) { return deg * Math.PI / 180; };
+  var dLat = toRad(lat2 - lat1);
+  var dLng = toRad(lng2 - lng1);
+  var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
+
+function handleSetBranchLocation(data) {
+  var code = String(data.code || data.branch || '').trim();
+  var lat = parseFloat(data.lat);
+  var lng = parseFloat(data.lng);
+  var radius = parseFloat(data.radius);
+  if (!code) return jsonOut({ success: false, error: '지점 코드가 없습니다' });
+  if (!isFinite(lat) || !isFinite(lng)) return jsonOut({ success: false, error: '좌표가 유효하지 않습니다' });
+  if (!isFinite(radius) || radius <= 0) radius = DEFAULT_RADIUS_M;
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('지점설정');
+  if (!sheet) return jsonOut({ success: false, error: '지점설정 시트가 없습니다' });
+
+  var range = sheet.getDataRange();
+  var values = range.getValues();
+  var headerLen = values[0] ? values[0].length : 4;
+
+  // 헤더 확장 (lat, lng, radius)
+  if (headerLen < 7) {
+    var newHeader = values[0].slice();
+    while (newHeader.length < 7) newHeader.push('');
+    newHeader[4] = 'lat';
+    newHeader[5] = 'lng';
+    newHeader[6] = 'radius';
+    sheet.getRange(1, 1, 1, 7).setValues([newHeader]);
+  }
+
+  // 기존 row 검색
+  for (var i = 1; i < values.length; i++) {
+    if (String(values[i][0]).trim() === code) {
+      sheet.getRange(i + 1, 5).setValue(lat);
+      sheet.getRange(i + 1, 6).setValue(lng);
+      sheet.getRange(i + 1, 7).setValue(radius);
+      return jsonOut({ success: true, lat: lat, lng: lng, radius: radius, updated: true });
+    }
+  }
+
+  // row 없으면 새로 추가
+  var node = getOrgNode(code);
+  var branchName = node ? node.name : code;
+  sheet.appendRow([code, branchName, '', '', lat, lng, radius]);
+  return jsonOut({ success: true, lat: lat, lng: lng, radius: radius, created: true });
+}
+
+function handleGetBranchLocation(params) {
+  var code = String(params.code || params.branch || '').trim();
+  if (!code) return jsonOut({ exists: false });
+  var loc = getBranchLocation(code);
+  if (!loc) return jsonOut({ exists: false });
+  return jsonOut({ exists: true, lat: loc.lat, lng: loc.lng, radius: loc.radius });
+}
+
 // ========== 조직도 ==========
 
 function getOrgSheet() {
@@ -278,6 +382,25 @@ function handleCheckin(data) {
   var verification = verifyTOTPCode(secret, data.code);
   if (!verification.valid) {
     return jsonOut({ success: false, error: 'QR이 새로 바뀌었어요' });
+  }
+
+  // 위치 검증 — 지점에 좌표가 등록되어 있을 때만 활성. v1 호환: lat/lng 없이 와도 폴백.
+  var branchLoc = getBranchLocation(String(data.branch || '').trim());
+  if (branchLoc) {
+    var userLat = parseFloat(data.lat);
+    var userLng = parseFloat(data.lng);
+    if (!isFinite(userLat) || !isFinite(userLng)) {
+      return jsonOut({ success: false, error: '위치 권한이 필요해요', code: 'NO_LOCATION' });
+    }
+    var distance = haversineMeters(userLat, userLng, branchLoc.lat, branchLoc.lng);
+    if (distance > branchLoc.radius) {
+      return jsonOut({
+        success: false,
+        error: '지점에서 ' + distance + 'm 떨어져 있어요 (허용 ' + branchLoc.radius + 'm)',
+        code: 'OUT_OF_RANGE',
+        distance: distance,
+      });
+    }
   }
 
   var token = String(data.token || '').trim();
@@ -790,27 +913,55 @@ function handleCheckStatus(params) {
   var hasReturn = false;
   var hasLearning = false;
   var hasLeave = false;
+  var branchCodeOfEmp = '';
+
+  // 이번주 월~금 날짜 계산 (Asia/Seoul 기준)
+  var now = new Date();
+  var dayOfWeek = parseInt(Utilities.formatDate(now, 'Asia/Seoul', 'u')); // 1=월 ~ 7=일
+  var weekDates = [];
+  for (var d = 1; d <= 5; d++) {
+    var offset = d - dayOfWeek;
+    var dt = new Date(now.getTime() + offset * 86400000);
+    weekDates.push(Utilities.formatDate(dt, 'Asia/Seoul', 'yyyy-MM-dd'));
+  }
+  var weekday = ['월', '화', '수', '목', '금'];
+  var weekly = { '월': false, '화': false, '수': false, '목': false, '금': false };
 
   for (var i = 1; i < data.length; i++) {
-    if (String(data[i][1]).trim() === emp.empId && toDateString(data[i][6]) === today) {
-      var type = String(data[i][4]).trim();
+    if (String(data[i][1]).trim() !== emp.empId) continue;
+    var rowDate = toDateString(data[i][6]);
+    var type = String(data[i][4]).trim();
+    var rowBranch = String(data[i][3]).trim();
+
+    if (rowDate === today) {
       if (type === '출근') hasCheckin = true;
       else if (type === '귀소') hasReturn = true;
       else if (type === '학습회') hasLearning = true;
       else if (type === '퇴근') hasLeave = true;
+      if (!branchCodeOfEmp && rowBranch) branchCodeOfEmp = rowBranch;
+    }
+
+    if (type === '출근') {
+      var wdIdx = weekDates.indexOf(rowDate);
+      if (wdIdx >= 0) weekly[weekday[wdIdx]] = true;
     }
   }
 
-  var now = new Date();
   var hourKST = parseInt(Utilities.formatDate(now, 'Asia/Seoul', 'HH'));
 
+  var branchName = '';
+  if (branchCodeOfEmp) {
+    var node = getOrgNode(branchCodeOfEmp);
+    if (node) branchName = node.name;
+  }
+
   return jsonOut({
-    // v1 호환 필드 (정발산 main 클라이언트가 사용)
+    // v1 호환 필드
     checkedIn: hasCheckin,
     hasReturn: hasReturn,
     canReturn: hasCheckin && !hasReturn && hourKST >= 14,
     afterTwo: hourKST >= 14,
-    // v2 신규 필드 (4개 이벤트 버튼용)
+    // v2 신규 필드
     today: {
       checkin: hasCheckin,
       return: hasReturn,
@@ -820,10 +971,178 @@ function handleCheckStatus(params) {
     canEvent: {
       checkin: !hasCheckin,
       return: !hasReturn && hourKST >= 14,
-      learning: true, // 시간·횟수 무제한
+      learning: true,
       leave: !hasLeave,
     },
     hourKST: hourKST,
+    weekly: weekly,
+    branchName: branchName,
+  });
+}
+
+// ========== Claude API ==========
+
+var CLAUDE_MODEL_FAST = 'claude-haiku-4-5-20251001';
+var CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
+
+function callClaude(systemPrompt, userPrompt, maxTokens) {
+  var apiKey = PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY');
+  if (!apiKey) return { error: 'ANTHROPIC_API_KEY 미설정' };
+
+  var payload = {
+    model: CLAUDE_MODEL_FAST,
+    max_tokens: maxTokens || 256,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userPrompt }],
+  };
+
+  var options = {
+    method: 'post',
+    contentType: 'application/json',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true,
+  };
+
+  try {
+    var res = UrlFetchApp.fetch(CLAUDE_API_URL, options);
+    var code = res.getResponseCode();
+    var body = res.getContentText();
+    if (code !== 200) return { error: 'Claude API ' + code + ': ' + body.slice(0, 200) };
+    var json = JSON.parse(body);
+    if (json.content && json.content[0] && json.content[0].text) {
+      return { text: json.content[0].text.trim() };
+    }
+    return { error: '응답 파싱 실패' };
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+function handleGreeting(data) {
+  var empName = String(data.empName || '').trim();
+  var branchName = String(data.branchName || '').trim();
+  var status = String(data.status || '').trim(); // normal / late / working
+  var type = String(data.type || '출근').trim();
+  var time = String(data.time || '').trim().slice(0, 5);
+
+  var hour = parseInt(Utilities.formatDate(new Date(), 'Asia/Seoul', 'HH'));
+  var weekday = ['일', '월', '화', '수', '목', '금', '토'][new Date().getDay()];
+
+  var statusText = '';
+  if (type === '출근') {
+    if (status === 'normal') statusText = '정시 출근';
+    else if (status === 'late') statusText = '지각';
+    else statusText = '늦은 출근';
+  }
+
+  var systemPrompt = 'You are a warm, witty morning briefing assistant for Korean insurance FPs (financial planners). ' +
+    'Generate ONE single-sentence Korean greeting (max 40 chars) that feels personal and energizing. ' +
+    'Use the FP\'s name naturally. Match tone to the event type and time. ' +
+    'No emojis, no exclamation overload, no clichés like "화이팅". ' +
+    'Output ONLY the greeting sentence — no quotes, no preamble.';
+
+  var userPrompt = 'FP: ' + empName + '\n' +
+    '지점: ' + branchName + '\n' +
+    '이벤트: ' + type + '\n' +
+    '시각: ' + time + ' (' + weekday + '요일)' + '\n' +
+    (statusText ? '상태: ' + statusText + '\n' : '') +
+    '\n한 문장으로 인사말 생성.';
+
+  var result = callClaude(systemPrompt, userPrompt, 120);
+  if (result.error) {
+    return jsonOut({ success: false, error: result.error });
+  }
+  return jsonOut({ success: true, greeting: result.text });
+}
+
+function handleBriefing(data) {
+  var code = String(data.code || '').trim();
+  var date = String(data.date || todayString()).trim();
+  if (!code) return jsonOut({ success: false, error: 'code 필요' });
+
+  // 오늘 현황 데이터 수집
+  var node = getOrgNode(code);
+  var branchName = node ? node.name : code;
+  var codes = getDescendantCodes(code);
+  var sheet = getLogSheet();
+  var allData = sheet.getDataRange().getValues();
+
+  var seenCheckin = {};
+  var seenReturn = {};
+  var seenLearning = {};
+  var seenLeave = {};
+  var lateList = [];
+  var normalCount = 0;
+  var lateCount = 0;
+  var workingCount = 0;
+
+  for (var i = 1; i < allData.length; i++) {
+    if (toDateString(allData[i][6]) !== date) continue;
+    var rb = String(allData[i][3]).trim();
+    if (codes.indexOf(rb) < 0) continue;
+
+    var empId = String(allData[i][1]).trim();
+    var empName = String(allData[i][2] || '').trim();
+    var type = String(allData[i][4]).trim();
+    var timeHHMM = toTimeHHMM(allData[i][5]);
+
+    if (type === '출근' && !seenCheckin[empId]) {
+      seenCheckin[empId] = true;
+      var cfg = getThresholdConfig(rb);
+      var st = getAttendanceStatus(timeHHMM, cfg);
+      if (st === 'normal') normalCount++;
+      else if (st === 'late') { lateCount++; lateList.push(empName + ' ' + timeHHMM); }
+      else workingCount++;
+    } else if (type === '귀소' && !seenReturn[empId]) {
+      seenReturn[empId] = true;
+    } else if (type === '학습회' && !seenLearning[empId]) {
+      seenLearning[empId] = true;
+    } else if (type === '퇴근' && !seenLeave[empId]) {
+      seenLeave[empId] = true;
+    }
+  }
+
+  var totalCheckin = Object.keys(seenCheckin).length;
+  var totalReturn = Object.keys(seenReturn).length;
+  var totalLearning = Object.keys(seenLearning).length;
+  var totalLeave = Object.keys(seenLeave).length;
+
+  var hour = parseInt(Utilities.formatDate(new Date(), 'Asia/Seoul', 'HH'));
+  var weekday = ['일', '월', '화', '수', '목', '금', '토'][new Date().getDay()];
+
+  var systemPrompt = 'You are a sharp morning briefing assistant for a Korean insurance branch manager (지점장). ' +
+    'Given today\'s attendance numbers, write a brief Korean briefing (3-4 short sentences, max 200 chars total). ' +
+    'Open with the headline number, then one observation, then one actionable suggestion. ' +
+    'Tone: confident, concise, like a chief of staff — not corporate fluff. ' +
+    'No emojis, no clichés. Output ONLY the briefing text.';
+
+  var userPrompt = '지점: ' + branchName + '\n' +
+    '날짜: ' + date + ' (' + weekday + '요일) 현재 ' + hour + '시\n' +
+    '출근 ' + totalCheckin + '명 (정시 ' + normalCount + ' / 지각 ' + lateCount + ' / 늦은출근 ' + workingCount + ')\n' +
+    '귀소 ' + totalReturn + '명 · 학습회 ' + totalLearning + '명 · 퇴근 ' + totalLeave + '명\n' +
+    (lateList.length > 0 ? '지각자: ' + lateList.slice(0, 5).join(', ') + '\n' : '') +
+    '\n위 데이터로 지점장 아침 브리핑 작성.';
+
+  var result = callClaude(systemPrompt, userPrompt, 400);
+  if (result.error) {
+    return jsonOut({ success: false, error: result.error });
+  }
+  return jsonOut({
+    success: true,
+    briefing: result.text,
+    stats: {
+      totalCheckin: totalCheckin,
+      normalCount: normalCount,
+      lateCount: lateCount,
+      workingCount: workingCount,
+      totalReturn: totalReturn,
+      totalLearning: totalLearning,
+      totalLeave: totalLeave,
+    },
   });
 }
 
@@ -838,6 +1157,9 @@ function doPost(e) {
     if (data.action === 'editRecord') return handleEditRecord(data);
     if (data.action === 'deleteRecord') return handleDeleteRecord(data);
     if (data.action === 'sendEmail') return handleSendEmail(data);
+    if (data.action === 'greeting') return handleGreeting(data);
+    if (data.action === 'briefing') return handleBriefing(data);
+    if (data.action === 'setBranchLocation') return handleSetBranchLocation(data);
     return jsonOut({ success: false, error: 'Unknown action' });
   } catch (err) {
     return jsonOut({ success: false, error: err.message });
@@ -854,6 +1176,7 @@ function doGet(e) {
     if (action === 'todaySummary') return handleTodaySummary(e.parameter);
     if (action === 'auditLog') return handleAuditLog(e.parameter);
     if (action === 'checkStatus') return handleCheckStatus(e.parameter);
+    if (action === 'branchLocation') return handleGetBranchLocation(e.parameter);
     return jsonOut({ error: 'Unknown action' });
   } catch (err) {
     return jsonOut({ error: err.message });
