@@ -1253,6 +1253,128 @@ function handleCheckStatus(params) {
   });
 }
 
+// ========== 데모 모드 (read-only) ==========
+// 사번만 받아 그 사람 status 반환. 시트 변경 없음. checkin-demo.html 전용.
+
+function handleDemoStatus(params) {
+  var empId = String(params.empId || '').trim();
+  if (!empId) return jsonOut({ success: false, error: 'empId 필요' });
+
+  // 이름·소속 찾기: 토큰 시트 우선 → 없으면 최근 출석로그
+  var name = '';
+  var branchCodeOfEmp = '';
+  var tokenSheet = getTokenSheet();
+  var tokenData = tokenSheet.getDataRange().getValues();
+  for (var ti = 1; ti < tokenData.length; ti++) {
+    if (String(tokenData[ti][1]).trim() === empId) {
+      name = String(tokenData[ti][2] || '').trim();
+      branchCodeOfEmp = String(tokenData[ti][3] || '').trim();
+      break;
+    }
+  }
+
+  var today = todayString();
+  var now = new Date();
+  var hourKST = parseInt(Utilities.formatDate(now, 'Asia/Seoul', 'HH'));
+
+  // 이번주 월~금
+  var dayOfWeek = parseInt(Utilities.formatDate(now, 'Asia/Seoul', 'u'));
+  var weekDates = [];
+  for (var d = 1; d <= 5; d++) {
+    var offset = d - dayOfWeek;
+    var dt = new Date(now.getTime() + offset * 86400000);
+    weekDates.push(Utilities.formatDate(dt, 'Asia/Seoul', 'yyyy-MM-dd'));
+  }
+  var weekdayKr = ['월', '화', '수', '목', '금'];
+  var weekly = { '월': false, '화': false, '수': false, '목': false, '금': false };
+
+  var rangeStart = dateAddDays(today, -35);
+  var rangeData = getLogsForDateRange(rangeStart, today);
+
+  var hasCheckin = false, hasReturn = false, hasLearning = false, hasLeave = false;
+  var checkinDates = {};
+  for (var i = 0; i < rangeData.length; i++) {
+    if (String(rangeData[i][1]).trim() !== empId) continue;
+    var rowDate = toDateString(rangeData[i][6]);
+    var type = String(rangeData[i][4]).trim();
+    var rowBranch = String(rangeData[i][3]).trim();
+
+    if (!name) name = String(rangeData[i][2] || '').trim();
+    if (!branchCodeOfEmp && rowBranch) branchCodeOfEmp = rowBranch;
+
+    if (rowDate === today) {
+      if (type === '출근') hasCheckin = true;
+      else if (type === '귀소') hasReturn = true;
+      else if (type === '학습회') hasLearning = true;
+      else if (type === '퇴근') hasLeave = true;
+    }
+    if (type === '출근') {
+      if (rowDate) checkinDates[rowDate] = true;
+      var wdIdx = weekDates.indexOf(rowDate);
+      if (wdIdx >= 0) weekly[weekdayKr[wdIdx]] = true;
+    }
+  }
+
+  // 이번달 누적
+  var monthKey = today.slice(0, 7);
+  var startOfMonth = monthKey + '-01';
+  var monthCheckinDays = 0;
+  for (var cdt in checkinDates) {
+    if (cdt >= startOfMonth && cdt <= today) monthCheckinDays++;
+  }
+
+  // streak
+  var streak = 0;
+  var cursor = new Date(now);
+  var sanity = 0;
+  while (sanity < 60) {
+    var cwd = cursor.getDay();
+    if (cwd >= 1 && cwd <= 5) {
+      var cds = Utilities.formatDate(cursor, 'Asia/Seoul', 'yyyy-MM-dd');
+      if (cds === today) {
+        if (checkinDates[cds]) streak++;
+      } else {
+        if (checkinDates[cds]) streak++;
+        else break;
+      }
+    }
+    cursor.setDate(cursor.getDate() - 1);
+    sanity++;
+  }
+
+  // 지난주 만근
+  var lastWeekDates = [];
+  for (var lw = 0; lw < 5; lw++) {
+    var lwOffset = lw + 1 - dayOfWeek - 7;
+    var lwdt = new Date(now.getTime() + lwOffset * 86400000);
+    lastWeekDates.push(Utilities.formatDate(lwdt, 'Asia/Seoul', 'yyyy-MM-dd'));
+  }
+  var lastWeekPerfect = true;
+  for (var lwi = 0; lwi < lastWeekDates.length; lwi++) {
+    if (!checkinDates[lastWeekDates[lwi]]) { lastWeekPerfect = false; break; }
+  }
+
+  var branchName = '';
+  if (branchCodeOfEmp) {
+    var node = getOrgNode(branchCodeOfEmp);
+    if (node) branchName = node.name;
+  }
+
+  return jsonOut({
+    success: true,
+    empId: empId,
+    empName: name || '(이름 없음)',
+    branchName: branchName,
+    today: { checkin: hasCheckin, return: hasReturn, learning: hasLearning, leave: hasLeave },
+    canEvent: { checkin: !hasCheckin, return: !hasReturn && hourKST >= 14, learning: true, leave: !hasLeave },
+    hourKST: hourKST,
+    weekly: weekly,
+    monthCheckinDays: monthCheckinDays,
+    streak: streak,
+    lastWeekPerfect: lastWeekPerfect,
+  });
+}
+
 // ========== 지점장 메모 ==========
 // 결근 분류에서 제외할 휴가·외근·교육 등 사유 등록
 
@@ -1386,37 +1508,207 @@ function callClaude(systemPrompt, userPrompt, maxTokens) {
   }
 }
 
+// 개인 출근 컨텍스트 — handleGreeting용. 사번 단위.
+function buildPersonalInsight(empId, date) {
+  var thirtyDaysAgo = dateAddDays(date, -45);
+  var data = getLogsForDateRange(thirtyDaysAgo, date);
+
+  var days = {}; // { 'YYYY-MM-DD': { '출근': 'HH:MM', ... } }
+  for (var i = 0; i < data.length; i++) {
+    var rowEid = String(data[i][1]).trim();
+    if (rowEid !== empId) continue;
+    var rowDate = toDateString(data[i][6]);
+    if (!rowDate) continue;
+    if (rowDate < thirtyDaysAgo || rowDate > date) continue;
+    var type = String(data[i][4]).trim();
+    var time = toTimeHHMM(data[i][5]);
+    if (!days[rowDate]) days[rowDate] = {};
+    days[rowDate][type] = time;
+  }
+
+  var bizDays30 = recentBusinessDays(date, 30); // 최신순
+
+  var todayCheckin = days[date] && days[date]['출근'] ? days[date]['출근'] : null;
+
+  // 평소 평균 출근 시각 (30영업일, 오늘 제외)
+  var checkinTimes = [];
+  for (var b = 0; b < bizDays30.length; b++) {
+    if (bizDays30[b] === date) continue;
+    if (days[bizDays30[b]] && days[bizDays30[b]]['출근']) {
+      checkinTimes.push(hhmmToMinutes(days[bizDays30[b]]['출근']));
+    }
+  }
+  var usualAvgMin = checkinTimes.length > 0
+    ? Math.round(checkinTimes.reduce(function (a, b) { return a + b; }, 0) / checkinTimes.length)
+    : null;
+  var diffFromUsual = (todayCheckin && usualAvgMin !== null)
+    ? hhmmToMinutes(todayCheckin) - usualAvgMin
+    : null;
+
+  // 같은 요일 평소 시각 (최근 4주)
+  var todayObj = new Date(date);
+  var weekday = todayObj.getDay();
+  var weekdayTimes = [];
+  for (var w = 1; w <= 4; w++) {
+    var past = new Date(todayObj.getTime() - w * 7 * 86400000);
+    var pastStr = Utilities.formatDate(past, 'Asia/Seoul', 'yyyy-MM-dd');
+    if (days[pastStr] && days[pastStr]['출근']) {
+      weekdayTimes.push(hhmmToMinutes(days[pastStr]['출근']));
+    }
+  }
+  var weekdayAvgMin = weekdayTimes.length > 0
+    ? Math.round(weekdayTimes.reduce(function (a, b) { return a + b; }, 0) / weekdayTimes.length)
+    : null;
+  var diffFromWeekday = (todayCheckin && weekdayAvgMin !== null)
+    ? hhmmToMinutes(todayCheckin) - weekdayAvgMin
+    : null;
+
+  // 이번달 누적
+  var thisMonth = date.slice(0, 7);
+  var monthDays = 0;
+  for (var dk in days) {
+    if (dk.slice(0, 7) === thisMonth && days[dk]['출근']) monthDays++;
+  }
+
+  // 연속 출근 — 오늘부터 역순으로 출근 없는 첫 영업일 만날 때까지
+  var streak = 0;
+  for (var b2 = 0; b2 < bizDays30.length; b2++) {
+    if (days[bizDays30[b2]] && days[bizDays30[b2]]['출근']) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+
+  // 지난주 출근일수 (월~금)
+  var todayDay = todayObj.getDay();
+  var daysToMonday = todayDay === 0 ? 6 : todayDay - 1;
+  var thisMondayMs = todayObj.getTime() - daysToMonday * 86400000;
+  var lastMondayMs = thisMondayMs - 7 * 86400000;
+  var lastWeekDays = 0;
+  for (var dd = 0; dd < 5; dd++) {
+    var pastDate = new Date(lastMondayMs + dd * 86400000);
+    var pastStr = Utilities.formatDate(pastDate, 'Asia/Seoul', 'yyyy-MM-dd');
+    if (days[pastStr] && days[pastStr]['출근']) lastWeekDays++;
+  }
+
+  // 30영업일 출근율 (오늘 제외)
+  var checkinDayCount = 0;
+  var denom = 0;
+  for (var b3 = 0; b3 < bizDays30.length; b3++) {
+    if (bizDays30[b3] === date) continue;
+    denom++;
+    if (days[bizDays30[b3]] && days[bizDays30[b3]]['출근']) checkinDayCount++;
+  }
+  var thirtyDayRate = denom > 0 ? Math.round((checkinDayCount / denom) * 100) : null;
+
+  // 첫 출근일 → 신규 분류
+  var firstDate = null;
+  for (var d2 in days) {
+    if (!days[d2]['출근']) continue;
+    if (!firstDate || d2 < firstDate) firstDate = d2;
+  }
+  var isNewbie = !firstDate || firstDate === date;
+  if (firstDate && firstDate !== date) {
+    var diffMs = todayObj.getTime() - new Date(firstDate).getTime();
+    var diffDays = Math.floor(diffMs / 86400000);
+    if (diffDays < 7) isNewbie = true;
+  }
+
+  return {
+    todayCheckin: todayCheckin,
+    usualAvgTime: usualAvgMin !== null ? minutesToHHMM(usualAvgMin) : null,
+    diffFromUsual: diffFromUsual,
+    weekdayAvgTime: weekdayAvgMin !== null ? minutesToHHMM(weekdayAvgMin) : null,
+    diffFromWeekday: diffFromWeekday,
+    monthDays: monthDays,
+    streak: streak,
+    lastWeekDays: lastWeekDays,
+    thirtyDayRate: thirtyDayRate,
+    isNewbie: isNewbie,
+    firstDate: firstDate,
+    sampleSize: checkinTimes.length,
+  };
+}
+
 function handleGreeting(data) {
   var empName = String(data.empName || '').trim();
-  var branchName = String(data.branchName || '').trim();
+  var empId = String(data.empId || '').trim();
   var status = String(data.status || '').trim(); // normal / late / working
   var type = String(data.type || '출근').trim();
   var time = String(data.time || '').trim().slice(0, 5);
+  var date = String(data.date || todayString()).trim();
 
   var hour = parseInt(Utilities.formatDate(new Date(), 'Asia/Seoul', 'HH'));
-  var weekday = ['일', '월', '화', '수', '목', '금', '토'][new Date().getDay()];
+  var weekday = ['일', '월', '화', '수', '목', '금', '토'][new Date(date).getDay()];
 
   var statusText = '';
   if (type === '출근') {
     if (status === 'normal') statusText = '정시 출근';
     else if (status === 'late') statusText = '지각';
-    else statusText = '늦은 출근';
+    else if (status === 'working') statusText = '늦은 출근';
   }
 
-  var systemPrompt = 'You are a warm, witty morning briefing assistant for Korean insurance FPs (financial planners). ' +
-    'Generate ONE single-sentence Korean greeting (max 40 chars) that feels personal and energizing. ' +
-    'Use the FP\'s name naturally. Match tone to the event type and time. ' +
-    'No emojis, no exclamation overload, no clichés like "화이팅". ' +
-    'Output ONLY the greeting sentence — no quotes, no preamble.';
+  var insight = empId ? buildPersonalInsight(empId, date) : null;
+
+  var systemPrompt = 'You are a Korean morning briefing assistant for insurance FPs. ' +
+    'Write ONE single Korean sentence (max 50 chars) for the FP. ' +
+    'Tone: chief-of-staff briefing — fact + suggested next step. Confident, warm, never preachy, never saccharine. ' +
+    'Address as "{이름}님" only. NEVER use job titles (이사·차장·과장·부장·사원·대리·팀장·실장 등 일체 금지). ' +
+    'NEVER use clichés (화이팅·파이팅·수고·아자). No emojis. No exclamation overload. ' +
+    'NEVER say the word "지각" — describe the time fact instead. ' +
+    '\n\n' +
+    'Pick the SINGLE most striking data point. Priority order:\n' +
+    '1) 신규 등록 (출근 이력 부족) — 등록 사실 + 다음부터의 편의 안내\n' +
+    '2) 지각 (status=late/working) — 도착 시각 사실 + 오후 행동 제안 (지각이라는 단어 금지)\n' +
+    '3) 평소 대비 큰 시간 변화 (±15분 이상) — 차이 짚어주기\n' +
+    '4) 의미 있는 누적 (3일+ 연속, 지난주 5/5, 이번달 10일+ 등)\n' +
+    '5) 그 외 — 짧고 단정한 도착 인사 + 다음 행동 한 마디\n' +
+    '\n' +
+    'Tone examples — match this style, do NOT copy verbatim:\n' +
+    '- 신규: "안효성님, 등록 완료. QR 찍고 출근 버튼 한 번이면 끝"\n' +
+    '- 지각: "김민수님, 09:12 도착. 오후 일정 한 번 더 확인하고 시작하시죠"\n' +
+    '- 평소보다 일찍: "박지영님, 평소보다 13분 일찍 도착하셨네요"\n' +
+    '- 연속 출근: "정태영님, 3주째 매주 5일 출근. 이대로면 이번달 만근이에요"\n' +
+    '- 평범한 출근: "이수진님, 오늘 정시 도착. 오전 미팅부터 차분히 가시죠"\n' +
+    '- 귀소: "최영호님, 복귀 확인. 마감 전 한 콜만 더 챙기시죠"\n' +
+    '- 학습회: "조서연님, 학습회 등록. 끝나고 본인 케이스 하나 정리해두세요"\n' +
+    '- 퇴근: "윤도현님, 오늘 마감. 내일 일정만 가볍게 훑고 닫으시죠"\n' +
+    '\n' +
+    'Output ONLY the greeting sentence — no quotes, no preamble, no markdown.';
 
   var userPrompt = 'FP: ' + empName + '\n' +
-    '지점: ' + branchName + '\n' +
     '이벤트: ' + type + '\n' +
-    '시각: ' + time + ' (' + weekday + '요일)' + '\n' +
-    (statusText ? '상태: ' + statusText + '\n' : '') +
-    '\n한 문장으로 인사말 생성.';
+    '시각: ' + time + ' (' + weekday + '요일, 현재 ' + hour + '시)\n' +
+    (statusText ? '오늘 출근 상태: ' + statusText + '\n' : '');
 
-  var result = callClaude(systemPrompt, userPrompt, 120);
+  if (insight) {
+    userPrompt += '\n[개인 컨텍스트]\n';
+    if (insight.isNewbie) {
+      userPrompt += '- 신규 등록 (출근 이력 부족, 첫 등록일 ' + (insight.firstDate || '오늘') + ')\n';
+    } else {
+      if (insight.todayCheckin && insight.usualAvgTime && insight.diffFromUsual !== null) {
+        var dStr = insight.diffFromUsual > 0 ? '+' + insight.diffFromUsual : insight.diffFromUsual;
+        userPrompt += '- 오늘 ' + insight.todayCheckin + ' 도착 / 평소 평균 ' + insight.usualAvgTime + ' (' + dStr + '분, 표본 ' + insight.sampleSize + '일)\n';
+      } else if (insight.todayCheckin) {
+        userPrompt += '- 오늘 ' + insight.todayCheckin + ' 도착\n';
+      }
+      if (insight.weekdayAvgTime && insight.diffFromWeekday !== null) {
+        var dwStr = insight.diffFromWeekday > 0 ? '+' + insight.diffFromWeekday : insight.diffFromWeekday;
+        userPrompt += '- 같은 ' + weekday + '요일 평소 평균 ' + insight.weekdayAvgTime + ' (' + dwStr + '분)\n';
+      }
+      if (insight.streak > 0) userPrompt += '- 현재 ' + insight.streak + '일 연속 출근\n';
+      if (insight.monthDays > 0) userPrompt += '- 이번달 누적 ' + insight.monthDays + '일 출근\n';
+      userPrompt += '- 지난주 ' + insight.lastWeekDays + '/5 출근\n';
+      if (insight.thirtyDayRate !== null) {
+        userPrompt += '- 최근 30영업일 출근율 ' + insight.thirtyDayRate + '%\n';
+      }
+    }
+  }
+
+  userPrompt += '\n위 데이터 중 가장 두드러진 1개를 골라 한 문장 인사 생성.';
+
+  var result = callClaude(systemPrompt, userPrompt, 150);
   if (result.error) {
     return jsonOut({ success: false, error: result.error });
   }
@@ -1822,6 +2114,7 @@ function doGet(e) {
     if (action === 'branchLocation') return handleGetBranchLocation(e.parameter);
     if (action === 'dailyInsight') return handleDailyInsight(e.parameter);
     if (action === 'memos') return handleGetMemos(e.parameter);
+    if (action === 'demoStatus') return handleDemoStatus(e.parameter);
     return jsonOut({ error: 'Unknown action' });
   } catch (err) {
     return jsonOut({ error: err.message });

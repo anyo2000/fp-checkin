@@ -3,14 +3,104 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FP 모닝 브리핑</title>
+  <title>FP 모닝 브리핑 — 데모</title>
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
   <link rel="stylesheet" href="css/style.css?v=3.9">
+  <style>
+    .demo-banner {
+      background: #FEF3F2;
+      border-bottom: 2px solid #DC2626;
+      color: #991B1B;
+      font-size: 13px;
+      font-weight: 700;
+      text-align: center;
+      padding: 8px 12px;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      letter-spacing: -0.2px;
+    }
+    .demo-controls {
+      background: white;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow-sm);
+    }
+    .demo-controls h3 {
+      font-size: 13px;
+      color: var(--color-text-secondary);
+      margin: 0 0 10px 0;
+      letter-spacing: -0.2px;
+    }
+    .demo-empid-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .demo-empid-row input {
+      flex: 1;
+      padding: 10px 12px;
+      border: 1.5px solid var(--color-border);
+      border-radius: 10px;
+      font-size: 14px;
+      font-family: inherit;
+      letter-spacing: 2px;
+    }
+    .demo-empid-row button {
+      padding: 10px 16px;
+      background: var(--color-primary);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .demo-empid-row button:disabled {
+      background: var(--color-text-muted);
+      cursor: not-allowed;
+    }
+    .demo-scenarios {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+    .demo-scenario {
+      padding: 8px 10px;
+      border: 1.5px solid var(--color-border);
+      border-radius: 8px;
+      background: white;
+      font-size: 12px;
+      cursor: pointer;
+      text-align: left;
+      font-family: inherit;
+      transition: all 0.15s;
+      color: var(--color-text);
+    }
+    .demo-scenario.active {
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+      color: white;
+      font-weight: 700;
+    }
+    .demo-empinfo {
+      font-size: 12px;
+      color: var(--color-text-secondary);
+      margin-top: 8px;
+      padding: 6px 10px;
+      background: var(--color-bg);
+      border-radius: 6px;
+    }
+  </style>
 </head>
 <body>
+  <div class="demo-banner">데모 모드 — 실제 출근 기록 저장 안 됨</div>
+
   <div class="checkin-page">
 
-    <!-- 상단 브랜드 -->
     <header class="checkin-header">
       <div class="brand">
         <span class="brand-dots">
@@ -24,14 +114,37 @@
 
     <main class="checkin-main">
 
-      <!-- 토큰 모드: 등록된 기기 -->
+      <!-- 데모 컨트롤 -->
+      <div class="demo-controls">
+        <h3>1) 시연할 사번 입력</h3>
+        <div class="demo-empid-row">
+          <input type="tel" id="demoEmpId" placeholder="0000000" maxlength="10" inputmode="numeric">
+          <button id="demoLoadBtn" onclick="loadDemoEmp()">불러오기</button>
+        </div>
+        <div class="demo-empinfo" id="demoEmpInfo" style="display:none;"></div>
+
+        <h3 style="margin-top:14px;">2) 시나리오 강제 (출근 누를 때 적용)</h3>
+        <div class="demo-scenarios">
+          <button class="demo-scenario active" data-sc="real" onclick="setScenario(this)">그대로 (진짜 상태)</button>
+          <button class="demo-scenario" data-sc="month5" onclick="setScenario(this)">이번달 5일째 마일스톤</button>
+          <button class="demo-scenario" data-sc="month10" onclick="setScenario(this)">이번달 10일째</button>
+          <button class="demo-scenario" data-sc="month20huge" onclick="setScenario(this)">이번달 20일째 HUGE</button>
+          <button class="demo-scenario" data-sc="streak3" onclick="setScenario(this)">연속 3일</button>
+          <button class="demo-scenario" data-sc="streak7" onclick="setScenario(this)">연속 7일</button>
+          <button class="demo-scenario" data-sc="streak30huge" onclick="setScenario(this)">연속 30일 HUGE</button>
+          <button class="demo-scenario" data-sc="firstOfMonth" onclick="setScenario(this)">이번달 첫 출근</button>
+          <button class="demo-scenario" data-sc="late" onclick="setScenario(this)">지각 (09:15)</button>
+          <button class="demo-scenario" data-sc="newbie" onclick="setScenario(this)">신규 등록</button>
+        </div>
+      </div>
+
+      <!-- 토큰 모드 동일 화면 (사번 로드 후 표시) -->
       <section id="tokenSection" class="screen" style="display:none;">
         <div class="greeting-block">
           <h1 class="greeting-name"><span id="tokenEmpName">홍길동</span> <span class="greeting-suffix">님</span></h1>
           <p class="greeting-empid" id="tokenEmpId">사번 0000000</p>
         </div>
 
-        <!-- 오늘 한마디 (LLM, 빈 상태 → 타이핑) -->
         <div class="ai-greet-card">
           <span class="ai-badge">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
@@ -40,7 +153,6 @@
           <p class="ai-greet-text typing" id="tokenAiGreeting">&nbsp;</p>
         </div>
 
-        <!-- 이번달 진행률 + 다음 마일스톤 (C-1·3) -->
         <div class="progress-card" id="progressCard" style="display:none;">
           <div class="progress-header">
             <span class="progress-title">이번달 출근</span>
@@ -52,7 +164,6 @@
           <div class="progress-next" id="progressNext">·</div>
         </div>
 
-        <!-- streak 카드 (월 누적 / 연속 / 지난주 매일) -->
         <div class="streak-card" id="streakCard" style="display:none;">
           <div class="streak-icon" id="streakIcon">·</div>
           <div class="streak-body">
@@ -61,7 +172,6 @@
           </div>
         </div>
 
-        <!-- 이번주 출근 -->
         <div class="weekly-card">
           <div class="weekly-header">
             <span class="weekly-title">이번 주 출근</span>
@@ -70,74 +180,23 @@
           <div class="weekly-days" id="weeklyDays"></div>
         </div>
 
-        <!-- 4개 이벤트 그리드 (컴팩트) -->
         <div class="event-grid event-grid-compact">
-          <button class="event-btn event-primary" data-event="출근" onclick="doEventCheckin('출근')">
+          <button class="event-btn event-primary" data-event="출근" onclick="demoEventCheckin('출근')">
             <span class="event-name">출근</span>
             <span class="event-state" id="state-출근">&nbsp;</span>
           </button>
-          <button class="event-btn" data-event="귀소" onclick="doEventCheckin('귀소')">
+          <button class="event-btn" data-event="귀소" onclick="demoEventCheckin('귀소')">
             <span class="event-name">귀소</span>
             <span class="event-state" id="state-귀소">&nbsp;</span>
           </button>
-          <button class="event-btn" data-event="학습회" onclick="doEventCheckin('학습회')">
+          <button class="event-btn" data-event="학습회" onclick="demoEventCheckin('학습회')">
             <span class="event-name">학습회</span>
             <span class="event-state" id="state-학습회">&nbsp;</span>
           </button>
-          <button class="event-btn" data-event="퇴근" onclick="doEventCheckin('퇴근')">
+          <button class="event-btn" data-event="퇴근" onclick="demoEventCheckin('퇴근')">
             <span class="event-name">퇴근</span>
             <span class="event-state" id="state-퇴근">&nbsp;</span>
           </button>
-        </div>
-
-        <p id="tokenStatusMsg" style="display:none;"></p>
-      </section>
-
-      <!-- 신규 등록: 사번 입력 -->
-      <section id="formSection" class="screen">
-        <div class="form-card">
-          <h1 class="form-title">출근 등록</h1>
-          <p class="form-subtitle">첫 등록이에요. 사번과 이름을 입력해주세요.</p>
-
-          <div class="form-group">
-            <label class="label">사번</label>
-            <input type="tel" id="empId" class="input-field" placeholder="0000000" maxlength="10" inputmode="numeric" autocomplete="off">
-          </div>
-
-          <div class="form-group">
-            <label class="label">이름</label>
-            <input type="text" id="empName" class="input-field input-text" placeholder="홍길동" maxlength="10" autocomplete="off">
-          </div>
-
-          <button class="btn btn-primary btn-block" id="checkinBtn" onclick="doCheckin()">출근 등록</button>
-
-          <p class="form-note">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 1.892.402 3.13 1.5 4.5L12 22l6.5-7.5c1.098-1.37 1.5-2.608 1.5-4.5a8 8 0 0 0-8-8z"/></svg>
-            거리 확인을 위해 GPS를 사용합니다. 위치 정보는 저장되지 않습니다.
-          </p>
-          <p id="errorMsg" class="form-error" style="display: none;"></p>
-        </div>
-      </section>
-
-      <!-- 등록 정보 확인 -->
-      <section id="confirmSection" class="screen" style="display:none;">
-        <div class="form-card">
-          <h1 class="form-title">등록 정보 확인</h1>
-          <div class="confirm-info">
-            <div class="confirm-row">
-              <span class="confirm-label">사번</span>
-              <span class="confirm-value" id="confirmEmpId"></span>
-            </div>
-            <div class="confirm-row">
-              <span class="confirm-label">이름</span>
-              <span class="confirm-value" id="confirmEmpName"></span>
-            </div>
-          </div>
-          <p class="form-note">정보가 맞는지 확인해주세요. 변경이 필요하면 관리자에게 문의해주세요.</p>
-          <div class="confirm-actions">
-            <button class="btn btn-secondary" onclick="cancelConfirm()">수정</button>
-            <button class="btn btn-primary" onclick="doCheckinConfirmed()">확인 후 출근</button>
-          </div>
         </div>
       </section>
 
@@ -166,18 +225,8 @@
             </span>
             <p class="ai-greet-text typing" id="resultGreeting">&nbsp;</p>
           </div>
-        </div>
-      </section>
 
-      <!-- 실패 결과 -->
-      <section id="errorSection" class="result result-error">
-        <div class="result-card">
-          <div class="result-icon-circle result-icon-error">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          </div>
-          <h2 class="result-message" id="errorTitle">QR이 새로 바뀌었어요</h2>
-          <div class="result-detail">태블릿의 QR을 다시 스캔해주세요</div>
-          <button class="btn btn-primary btn-block" onclick="location.reload()" style="margin-top:24px;">다시 시도</button>
+          <button class="btn btn-secondary btn-block" onclick="resetDemo()" style="margin-top:24px;">다시 시연하기</button>
         </div>
       </section>
 
@@ -185,8 +234,9 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <script>window.__SKIP_AUTO_INIT = true;</script>
   <script src="js/config.js?v=3.9"></script>
-  <script src="js/totp.js?v=3.9"></script>
   <script src="js/checkin.js?v=3.9"></script>
+  <script src="js/checkin-demo.js?v=3.9"></script>
 </body>
 </html>
