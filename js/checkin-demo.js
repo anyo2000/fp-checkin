@@ -11,14 +11,19 @@ function setScenario(btn) {
   btn.classList.add('active');
   _demoScenario = btn.getAttribute('data-sc');
 
-  // 시나리오 선택 즉시 화면 미리보기 — progress·streak·weekly 갱신
+  // 시나리오 선택 즉시 화면 미리보기 — progress·streak·weekly·버튼 갱신
+  // applyScenario가 today.checkin=false 강제하므로 출근 버튼 항상 활성
   if (!_demoStatus) return;
-  var preview = _demoScenario === 'real'
-    ? _demoStatus
-    : applyScenario(_demoScenario, _demoStatus);
+  var preview = applyScenario(_demoScenario, _demoStatus);
   if (typeof renderWeekly === 'function' && preview.weekly) renderWeekly(preview.weekly);
   if (typeof renderProgress === 'function') renderProgress(preview);
   if (typeof renderStreak === 'function') renderStreak(preview);
+  if (typeof updateEventButton === 'function') {
+    updateEventButton('출근', preview);
+    updateEventButton('귀소', preview);
+    updateEventButton('학습회', preview);
+    updateEventButton('퇴근', preview);
+  }
 }
 
 async function loadDemoEmp() {
@@ -63,14 +68,16 @@ async function loadDemoEmp() {
     if (spacer) spacer.style.display = 'block';
 
     // 헬퍼 호출 — checkin.js의 함수들 그대로 사용
-    if (typeof renderWeekly === 'function' && status.weekly) renderWeekly(status.weekly);
-    if (typeof renderProgress === 'function') renderProgress(status);
-    if (typeof renderStreak === 'function') renderStreak(status);
+    // 첫 로드는 'real' 시나리오로 미리보기 (today.checkin=false 강제 → 출근 버튼 활성)
+    var initialPreview = applyScenario('real', status);
+    if (typeof renderWeekly === 'function' && initialPreview.weekly) renderWeekly(initialPreview.weekly);
+    if (typeof renderProgress === 'function') renderProgress(initialPreview);
+    if (typeof renderStreak === 'function') renderStreak(initialPreview);
     if (typeof updateEventButton === 'function') {
-      updateEventButton('출근', status);
-      updateEventButton('귀소', status);
-      updateEventButton('학습회', status);
-      updateEventButton('퇴근', status);
+      updateEventButton('출근', initialPreview);
+      updateEventButton('귀소', initialPreview);
+      updateEventButton('학습회', initialPreview);
+      updateEventButton('퇴근', initialPreview);
     }
     if (typeof bindEventBtnEffects === 'function') bindEventBtnEffects();
 
