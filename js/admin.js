@@ -350,7 +350,7 @@ function renderBriefingCard(opts) {
   var pod = '';
   if (opts.insight && opts.insight.personOfDay) {
     var p = opts.insight.personOfDay;
-    var flagIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>';
+    var flagIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>';
     pod = '<div class="person-of-day"><span class="pod-icon">' + flagIcon + '</span><span class="pod-text"><b>주목할 FP — ' + escapeHtml(p.name) + '</b> · ' + escapeHtml(p.reason) + '</span></div>';
   }
 

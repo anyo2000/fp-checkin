@@ -966,11 +966,43 @@ body {
 .kpi-clickable {
   cursor: pointer;
   transition: all 0.15s;
+  position: relative;
+}
+
+.kpi-clickable::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 0; height: 0;
+  border-top: 28px solid var(--color-primary-soft);
+  border-left: 28px solid transparent;
+  border-top-right-radius: var(--radius-lg);
+  transition: border-top-color 0.15s;
 }
 
 .kpi-clickable:hover {
   border-color: var(--color-primary);
-  box-shadow: 0 4px 12px rgba(255, 102, 0, 0.12);
+  box-shadow: 0 4px 14px rgba(255, 102, 0, 0.18);
+  transform: translateY(-1px);
+}
+
+.kpi-clickable:hover::after {
+  border-top-color: var(--color-primary);
+}
+
+.kpi-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.kpi-chevron {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-primary);
+  letter-spacing: -0.2px;
+  white-space: nowrap;
 }
 
 .trend-card {
@@ -1038,16 +1070,16 @@ body {
   font-weight: 800;
 }
 
-/* "오늘의 한 사람" 영역 — AI 브리핑 카드 내 */
+/* "주목할 FP" 영역 — AI 브리핑 카드 내 */
 .person-of-day {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-top: 14px;
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.06);
+  gap: 14px;
+  margin-top: 20px;
+  padding: 16px 18px;
+  background: rgba(255, 255, 255, 0.07);
   border-radius: var(--radius);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   position: relative;
   z-index: 1;
 }
@@ -1056,25 +1088,25 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 40px;
+  height: 40px;
   background: var(--color-primary);
   color: white;
   border-radius: 50%;
-  font-size: 14px;
-  font-weight: 700;
   flex-shrink: 0;
 }
 
 .pod-text {
-  font-size: 13px;
+  font-size: 16px;
   color: rgba(255, 255, 255, 0.92);
   line-height: 1.5;
+  letter-spacing: -0.2px;
 }
 
 .pod-text b {
   color: white;
-  font-weight: 700;
+  font-weight: 800;
+  font-size: 17px;
 }
 
 /* 로딩 점 애니메이션 */
@@ -1103,7 +1135,7 @@ body {
   background: var(--color-secondary);
   color: white;
   border-radius: var(--radius-lg);
-  padding: 22px 24px;
+  padding: 28px 30px;
   margin-bottom: 24px;
   box-shadow: var(--shadow-dark);
   position: relative;
@@ -1151,15 +1183,15 @@ body {
 }
 
 .ai-briefing-body {
-  font-size: 16px;
-  line-height: 1.7;
+  font-size: 20px;
+  line-height: 1.65;
   color: white;
   white-space: pre-wrap;
   word-break: keep-all;
-  letter-spacing: -0.2px;
+  letter-spacing: -0.3px;
   position: relative;
   z-index: 1;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .ai-briefing-loading {

@@ -349,6 +349,24 @@ function getLogsForMonth(month) {
   return getLogsForDateRange(firstDay, firstDay);
 }
 
+// ========== 권한 인증 (GAS 에디터에서 1번만 실행) ==========
+// 모든 사용 권한(스프레드시트·UrlFetch·메일·트리거·Properties)을 한 번에 트리거.
+// 첫 실행 시 권한 승인 팝업이 뜨고, 한 번 승인되면 deployed 요청 전부 정상 동작.
+function authorizeAll() {
+  var log = [];
+  try { SpreadsheetApp.getActiveSpreadsheet().getName(); log.push('Sheets OK'); }
+  catch (e) { log.push('Sheets FAIL: ' + e.message); }
+  try { UrlFetchApp.fetch('https://www.google.com', { muteHttpExceptions: true }); log.push('UrlFetch OK'); }
+  catch (e) { log.push('UrlFetch FAIL: ' + e.message); }
+  try { MailApp.getRemainingDailyQuota(); log.push('Mail OK'); }
+  catch (e) { log.push('Mail FAIL: ' + e.message); }
+  try { ScriptApp.getProjectTriggers(); log.push('Triggers OK'); }
+  catch (e) { log.push('Triggers FAIL: ' + e.message); }
+  try { PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY'); log.push('Properties OK'); }
+  catch (e) { log.push('Properties FAIL: ' + e.message); }
+  return log.join(' | ');
+}
+
 // ========== 월별 아카이브 ==========
 
 // 이번달 이전 데이터를 본 시트 → 아카이브 시트로 이동

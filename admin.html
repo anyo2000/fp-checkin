@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>관리자 — FP 모닝 브리핑</title>
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
-  <link rel="stylesheet" href="css/style.css?v=3.5">
+  <link rel="stylesheet" href="css/style.css?v=3.6">
 </head>
 <body>
   <div class="admin-page">
@@ -78,7 +78,10 @@
           <div class="stat-delta" id="todayTotalDelta"></div>
         </div>
         <div class="stat-card kpi-card kpi-clickable" onclick="openUnusualAbsentees()">
-          <div class="stat-label">결근 (갑자기)</div>
+          <div class="kpi-card-header">
+            <div class="stat-label">결근 (갑자기)</div>
+            <span class="kpi-chevron">명단 보기 ›</span>
+          </div>
           <div class="stat-value" id="todayUnusual">-</div>
           <div class="stat-delta" id="todayUnusualSub">평소 잘 나오시던 분</div>
         </div>
@@ -88,9 +91,12 @@
           <div class="stat-delta" id="todayLateSub"></div>
         </div>
         <div class="stat-card kpi-card kpi-clickable" onclick="openLongTermAbsentees()">
-          <div class="stat-label">장기 미출근</div>
+          <div class="kpi-card-header">
+            <div class="stat-label">장기 미출근</div>
+            <span class="kpi-chevron">명단 보기 ›</span>
+          </div>
           <div class="stat-value" id="todayLongTerm">-</div>
-          <div class="stat-delta">최근 5영업일 0회 →</div>
+          <div class="stat-delta">최근 5영업일 0회</div>
         </div>
       </div>
 
@@ -324,7 +330,7 @@
     </div>
   </div>
 
-  <script src="js/config.js?v=3.5"></script>
-  <script src="js/admin.js?v=3.5"></script>
+  <script src="js/config.js?v=3.6"></script>
+  <script src="js/admin.js?v=3.6"></script>
 </body>
 </html>
