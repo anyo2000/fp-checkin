@@ -1379,59 +1379,55 @@ body {
   border-color: var(--color-primary);
 }
 
-/* 탭바 — 언더라인 스타일 (.tab-bar 자손만 적용) */
+/* 탭바 — segmented control (균등 분포 + 클릭 시그널 명확) */
 .tab-bar {
   display: flex;
-  gap: 0;
+  gap: 4px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-divider);
+  border-radius: 12px;
+  padding: 4px;
   margin-bottom: 24px;
-  border-bottom: 1px solid var(--color-divider);
-  overflow-x: auto;
-  white-space: nowrap;
-  -webkit-overflow-scrolling: touch;
 }
 
 .tab-bar .tab-btn {
-  position: relative;
-  padding: 12px 18px;
+  flex: 1;
+  padding: 10px 8px;
   border: none;
   background: transparent;
-  border-radius: 0;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--color-text-secondary);
   font-family: inherit;
-  transition: color 0.15s;
-  flex-shrink: 0;
+  transition: all 0.15s;
+  text-align: center;
   letter-spacing: -0.2px;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .tab-bar .tab-btn:hover {
   color: var(--color-text);
-  background: transparent;
+  background: rgba(255, 255, 255, 0.6);
   border-color: transparent;
 }
 
 .tab-bar .tab-btn.active {
-  color: var(--color-primary);
+  background: var(--color-primary);
+  color: white;
   font-weight: 700;
-  background: transparent;
+  box-shadow: 0 2px 6px rgba(255, 102, 0, 0.25);
 }
 
-.tab-bar .tab-btn.active::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: 12px;
-  right: 12px;
-  height: 2.5px;
+.tab-bar .tab-btn.active:hover {
   background: var(--color-primary);
-  border-radius: 2px 2px 0 0;
+  color: white;
 }
 
 @media (max-width: 640px) {
-  .tab-bar .tab-btn { padding: 10px 12px; font-size: 13px; }
-  .tab-bar .tab-btn.active::after { left: 8px; right: 8px; }
+  .tab-bar .tab-btn { font-size: 11px; padding: 8px 4px; letter-spacing: -0.3px; }
 }
 
 @media (max-width: 640px) {

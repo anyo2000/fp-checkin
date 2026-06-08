@@ -474,14 +474,17 @@ function daysAgoText(dateStr) {
   return '';
 }
 
-// AI 브리핑 텍스트 → 문장 줄바꿈 + 숫자 강조
+// AI 브리핑 텍스트 → 문장 줄바꿈 + literal \n 처리
 function formatBriefingHtml(text) {
   if (!text) return '';
-  var safe = escapeHtml(text);
-  // \n 우선 처리
+  // literal "\n" 문자열을 먼저 실제 줄바꿈으로 (LLM이 escape sequence를 텍스트로 출력한 경우)
+  var normalized = String(text).replace(/\\n/g, '\n');
+  // 빈 줄(공백만 있는 줄) 제거
+  normalized = normalized.split('\n').map(function (l) { return l.trim(); }).filter(function (l) { return l.length > 0; }).join('\n');
+  var safe = escapeHtml(normalized);
+  // 실제 줄바꿈 → <br>
   safe = safe.replace(/\n+/g, '<br>');
   // 마침표·물음표·느낌표 뒤 공백을 줄바꿈으로 (한국어 문장 분리)
-  // 단 "1.", "2." 같은 번호 매김은 보존 (앞이 숫자 아닌 경우만)
   safe = safe.replace(/([가-힣\w%)\]])([.!?])\s+(?=[가-힣A-Z])/g, '$1$2<br>');
   return safe;
 }
