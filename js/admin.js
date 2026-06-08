@@ -337,12 +337,12 @@ async function loadBriefing() {
 }
 
 function renderBriefingCard(opts) {
-  var meta = (ADMIN_NODE ? ADMIN_NODE.name : '') + ' · ' + (opts.date || '');
+  var meta = (ADMIN_NODE ? ADMIN_NODE.name : '') + ' · ' + shortDate(opts.date || '');
   var body;
   if (opts.loading) {
-    body = '<div class="ai-briefing-body ai-briefing-loading">AI가 오늘 현황을 분석하는 중<span class="dots"><i>.</i><i>.</i><i>.</i></span></div>';
+    body = '<div class="ai-briefing-body ai-briefing-loading">현황을 정리하는 중<span class="dots"><i>.</i><i>.</i><i>.</i></span></div>';
   } else if (opts.error) {
-    body = '<div class="ai-briefing-body ai-briefing-loading">' + escapeHtml(opts.error) + '</div>';
+    body = '<div class="ai-briefing-body ai-briefing-loading">브리핑을 일시적으로 불러올 수 없습니다.</div>';
   } else {
     body = '<div class="ai-briefing-body">' + escapeHtml(opts.briefing).replace(/\n/g, '<br>') + '</div>';
   }
@@ -350,20 +350,8 @@ function renderBriefingCard(opts) {
   var pod = '';
   if (opts.insight && opts.insight.personOfDay) {
     var p = opts.insight.personOfDay;
-    var icon = p.type === 'unusual_absence' ? '⚠' : (p.type === 'late_shift' ? '↘' : (p.type === 'early_shift' ? '↗' : '·'));
-    pod = '<div class="person-of-day"><span class="pod-icon">' + icon + '</span><span class="pod-text"><b>' + escapeHtml(p.headline) + '</b> · ' + escapeHtml(p.reason) + '</span></div>';
-  }
-
-  var stats = '';
-  if (opts.insight) {
-    var i = opts.insight;
-    var deltaSign = i.baseline.delta >= 0 ? '+' : '';
-    stats = '<div class="ai-briefing-stats">' +
-      '<span>오늘 출근 <b>' + i.today.checkin + '</b></span>' +
-      '<span>평소 평균 <b>' + i.baseline.avgCheckin + '</b> (' + deltaSign + i.baseline.delta + ')</span>' +
-      '<span>결근 <b>' + i.absentees.unusual.length + '</b></span>' +
-      '<span>지각 <b>' + i.today.late + '</b></span>' +
-    '</div>';
+    var flagIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>';
+    pod = '<div class="person-of-day"><span class="pod-icon">' + flagIcon + '</span><span class="pod-text"><b>주목할 FP — ' + escapeHtml(p.name) + '</b> · ' + escapeHtml(p.reason) + '</span></div>';
   }
 
   return '<div class="ai-briefing">' +
@@ -373,7 +361,6 @@ function renderBriefingCard(opts) {
     '</div>' +
     body +
     pod +
-    stats +
   '</div>';
 }
 
@@ -383,7 +370,8 @@ function renderInsightKPI(i) {
   var delta = i.baseline.delta;
   var deltaSign = delta > 0 ? '+' : '';
   var deltaCls = delta > 0 ? 'delta-up' : (delta < 0 ? 'delta-down' : 'delta-neutral');
-  document.getElementById('todayTotalDelta').innerHTML = '<span class="' + deltaCls + '">평소 ' + i.baseline.avgCheckin + '명 (' + deltaSign + delta + ')</span>';
+  var lastMonthAvg = (i.baseline.lastMonthAvg != null) ? i.baseline.lastMonthAvg : i.baseline.avgCheckin;
+  document.getElementById('todayTotalDelta').innerHTML = '<span class="' + deltaCls + '">지난달 평균 ' + lastMonthAvg + '명 (' + deltaSign + delta + ')</span>';
 
   document.getElementById('todayUnusual').textContent = i.absentees.unusual.length;
   document.getElementById('todayLate').textContent = i.today.late;
@@ -401,29 +389,34 @@ function renderTrendChart(series) {
   for (var i = 0; i < series.length; i++) max = Math.max(max, series[i].count);
   if (max === 0) max = 1;
 
-  var w = 280, h = 90, padX = 10, padY = 10;
+  var w = 900, h = 160, padX = 24, padY = 28;
   var n = series.length;
   var step = (w - padX * 2) / Math.max(1, n - 1);
 
   var points = '';
   var dots = '';
+  var labels = '';
   for (var j = 0; j < n; j++) {
     var x = padX + j * step;
-    var y = h - padY - ((series[j].count / max) * (h - padY * 2));
+    var y = h - padY - ((series[j].count / max) * (h - padY * 2 - 12));
     points += (j === 0 ? 'M' : 'L') + x + ',' + y + ' ';
     var color = series[j].isToday ? '#FF6600' : '#001E4E';
-    var r = series[j].isToday ? 5 : 3;
+    var r = series[j].isToday ? 6 : 4;
     dots += '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="' + color + '" />';
+    var labelColor = series[j].isToday ? '#FF6600' : '#475569';
+    var labelWeight = series[j].isToday ? '800' : '700';
+    labels += '<text x="' + x + '" y="' + (y - 12) + '" text-anchor="middle" font-size="13" font-weight="' + labelWeight + '" fill="' + labelColor + '">' + series[j].count + '</text>';
   }
 
   // 평균선
   var avg = series.reduce(function (a, b) { return a + b.count; }, 0) / n;
-  var avgY = h - padY - ((avg / max) * (h - padY * 2));
+  var avgY = h - padY - ((avg / max) * (h - padY * 2 - 12));
 
   chart.innerHTML = '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="width:100%; height:100%;">' +
-    '<line x1="' + padX + '" y1="' + avgY + '" x2="' + (w - padX) + '" y2="' + avgY + '" stroke="#CBD5E1" stroke-dasharray="3,3" />' +
-    '<path d="' + points + '" fill="none" stroke="#001E4E" stroke-width="1.5" />' +
+    '<line x1="' + padX + '" y1="' + avgY + '" x2="' + (w - padX) + '" y2="' + avgY + '" stroke="#CBD5E1" stroke-dasharray="4,4" stroke-width="1" />' +
+    '<path d="' + points + '" fill="none" stroke="#001E4E" stroke-width="1.8" />' +
     dots +
+    labels +
     '</svg>';
 
   axis.innerHTML = series.map(function (s) {
@@ -436,6 +429,14 @@ function escapeHtml(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
   });
+}
+
+// "2026-06-08" 또는 "2026-06-08T00:00:00.000Z" → "6/8"
+function shortDate(s) {
+  if (!s) return '';
+  var m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return parseInt(m[2]) + '/' + parseInt(m[3]);
+  return s;
 }
 
 // ===== 결근/장기 미출근 모달 =====
@@ -458,7 +459,7 @@ function openAbsenteeModal(title, subtitle, list, allowMemo) {
     html = '<div class="absentee-empty">해당 없음</div>';
   } else {
     html = list.map(function (a) {
-      var lastSeen = a.lastSeen ? ('마지막 출근: ' + a.lastSeen) : '기록 없음';
+      var lastSeen = a.lastSeen ? ('마지막 출근 ' + shortDate(a.lastSeen)) : '기록 없음';
       var memoBtn = allowMemo
         ? '<button class="btn-sm btn-edit" onclick="openMemoFor(\'' + a.empId + '\', \'' + escapeHtml(a.name) + '\')">사유 등록</button>'
         : '';

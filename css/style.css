@@ -923,18 +923,16 @@ body {
   margin-bottom: 28px;
 }
 
-/* 인사이트 그리드 (KPI 4 + 추세 그래프) */
-.insight-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 14px;
-  margin-bottom: 28px;
-}
-
+/* KPI 4열 그리드 */
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 720px) {
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 .kpi-card {
@@ -978,18 +976,21 @@ body {
 .trend-card {
   background: white;
   border-radius: var(--radius-lg);
-  padding: 14px 16px;
+  padding: 16px 20px;
   border: 1px solid var(--color-divider);
   box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
+  margin-bottom: 16px;
 }
+
+.trend-wide { margin-bottom: 16px; }
 
 .trend-header {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .trend-title {
@@ -1001,9 +1002,9 @@ body {
 }
 
 .trend-meta {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--color-primary);
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .trend-chart {
@@ -1011,25 +1012,30 @@ body {
   min-height: 90px;
 }
 
+.trend-chart-wide {
+  min-height: 160px;
+  height: 160px;
+}
+
 .trend-axis {
   display: grid;
   grid-template-columns: repeat(14, 1fr);
   gap: 1px;
-  font-size: 9px;
+  font-size: 11px;
   color: var(--color-text-muted);
   font-weight: 600;
   text-align: center;
-  margin-top: 4px;
+  margin-top: 6px;
+}
+
+.trend-axis-wide {
+  font-size: 12px;
+  padding: 0 12px;
 }
 
 .trend-axis .axis-today {
   color: var(--color-primary);
   font-weight: 800;
-}
-
-@media (max-width: 900px) {
-  .insight-grid { grid-template-columns: 1fr; }
-  .trend-card { order: -1; }
 }
 
 /* "오늘의 한 사람" 영역 — AI 브리핑 카드 내 */

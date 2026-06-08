@@ -1432,7 +1432,7 @@ function buildDailyInsight(code, date) {
     });
   }
 
-  // 평소 평균 (최근 14영업일 — 오늘 제외)
+  // 평소 평균 (최근 14영업일 — 오늘 제외) - AI 프롬프트용
   var pastCounts = [];
   for (var bd2 = 0; bd2 < bizDays14.length; bd2++) {
     if (bizDays14[bd2] === date) continue;
@@ -1445,7 +1445,46 @@ function buildDailyInsight(code, date) {
   var avgCheckin = pastCounts.length > 0
     ? Math.round(pastCounts.reduce(function (a, b) { return a + b; }, 0) / pastCounts.length)
     : todayCheckin;
-  var delta = todayCheckin - avgCheckin;
+
+  // 지난달 평균 (지난달 영업일 평균 출근 인원) - UI 표시용
+  var lastMonthDate = dateAddDays(date, -1);
+  // 1일이면 -1일은 지난달 마지막날 → slice로 YYYY-MM 추출
+  var todayMonth = date.slice(0, 7);
+  var lastMonthKey = lastMonthDate.slice(0, 7);
+  if (lastMonthKey === todayMonth) {
+    // 오늘이 1일이 아니면 lastMonthDate도 같은 달일 수 있음 — 진짜 지난달 구하기
+    var dParts = date.split('-');
+    var yy = parseInt(dParts[0]);
+    var mm = parseInt(dParts[1]);
+    mm = mm - 1;
+    if (mm === 0) { mm = 12; yy = yy - 1; }
+    lastMonthKey = yy + '-' + String(mm).padStart(2, '0');
+  }
+  var lastMonthData = getLogsForMonth(lastMonthKey);
+  var lastMonthDayCounts = {};
+  for (var lmi = 0; lmi < lastMonthData.length; lmi++) {
+    var lmRowDate = toDateString(lastMonthData[lmi][6]);
+    if (!lmRowDate || lmRowDate.slice(0, 7) !== lastMonthKey) continue;
+    var lmRb = String(lastMonthData[lmi][3]).trim();
+    if (codes.indexOf(lmRb) < 0) continue;
+    if (String(lastMonthData[lmi][4]).trim() !== '출근') continue;
+    var lmEid = String(lastMonthData[lmi][1]).trim();
+    if (!lastMonthDayCounts[lmRowDate]) lastMonthDayCounts[lmRowDate] = {};
+    lastMonthDayCounts[lmRowDate][lmEid] = true;
+  }
+  var lmDateKeys = Object.keys(lastMonthDayCounts);
+  var lmTotalCheckin = 0;
+  var lmBizDays = 0;
+  for (var lmd2 = 0; lmd2 < lmDateKeys.length; lmd2++) {
+    var lmDateObj = new Date(lmDateKeys[lmd2]);
+    var lmWd = lmDateObj.getDay();
+    if (lmWd < 1 || lmWd > 5) continue;
+    lmBizDays++;
+    lmTotalCheckin += Object.keys(lastMonthDayCounts[lmDateKeys[lmd2]]).length;
+  }
+  var lastMonthAvg = lmBizDays > 0 ? Math.round(lmTotalCheckin / lmBizDays) : avgCheckin;
+
+  var delta = todayCheckin - lastMonthAvg;
   var trend = delta > 1 ? '상승' : (delta < -1 ? '하락' : '안정');
 
   // 요일 컨텍스트
@@ -1602,7 +1641,7 @@ function buildDailyInsight(code, date) {
       checkin: todayCheckin, late: todayLate,
       return: todayReturn, leave: todayLeave, learning: todayLearning,
     },
-    baseline: { avgCheckin: avgCheckin, delta: delta, trend: trend },
+    baseline: { avgCheckin: avgCheckin, lastMonthAvg: lastMonthAvg, lastMonthKey: lastMonthKey, delta: delta, trend: trend },
     weekdayContext: { weekday: weekdayLabel, weekdayAvg: weekdayAvg, weekdayDelta: weekdayDelta },
     trendSeries: trendSeries,
     timeDistribution: timeDist,
