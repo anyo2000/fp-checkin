@@ -1500,7 +1500,14 @@ function callClaude(systemPrompt, userPrompt, maxTokens) {
     if (code !== 200) return { error: 'Claude API ' + code + ': ' + body.slice(0, 200) };
     var json = JSON.parse(body);
     if (json.content && json.content[0] && json.content[0].text) {
-      return { text: json.content[0].text.trim() };
+      var text = json.content[0].text.trim();
+      // 안전망 — AI가 금지어 못 지켰을 때 후처리
+      text = text
+        .replace(/상습\s*출근자/g, '꾸준한 출근자')
+        .replace(/상습\s*출근/g, '꾸준히 출근')
+        .replace(/상습적으로/g, '꾸준히')
+        .replace(/상습/g, '꾸준');
+      return { text: text };
     }
     return { error: '응답 파싱 실패' };
   } catch (err) {
@@ -1678,6 +1685,8 @@ function handleGreeting(data) {
     'Address as "{이름}님" only. NEVER use job titles (이사·차장·과장·부장·사원·대리·팀장·실장 등 일체 금지). ' +
     'NEVER use clichés (화이팅·파이팅·수고·아자). No emojis. No exclamation overload. ' +
     'NEVER say the word "지각" — describe the time fact instead. ' +
+    'NEVER use the word "상습" (it has a negative connotation in Korean even for positive contexts). ' +
+    'For "꾸준한 출근" intent, use one of: "꾸준한 출근자", "우수 출근자", "성실히 나오시는 분", "평소 잘 나오시는 분". ' +
     '\n\n' +
     'CRITICAL — Match the eventState exactly:\n' +
     '- "출근 전" (pre-checkin): The FP just opened the page and has NOT yet pressed the checkin button. NEVER claim they arrived, NEVER mention today\'s arrival time, NEVER compare today vs usual arrival time. Use only past data (어제까지 누적·streak·평소 평균). Tone: pre-day greeting ("오늘도 시작해볼게요", "어제까지 N일 연속이세요").\n' +
@@ -2094,6 +2103,7 @@ function handleBriefing(data) {
     'Structure: (1) Headline number with delta vs baseline. (2) The single most important anomaly (unusual absence OR significant time shift). (3) Concrete action item ("○○님 확인 권장" 같은 행동 제안). ' +
     'Format: Put each sentence on its own line using a real newline character. Do not type the escape sequence backslash-n; press an actual line break. Do not write everything as one long paragraph. ' +
     'Tone: confident chief-of-staff briefing — not corporate fluff. Never use clichés like "화이팅", "수고". No emojis. ' +
+    'NEVER use the word "상습" (negative connotation in Korean). For "꾸준한 출근" intent, use one of: "꾸준한 출근자", "우수 출근자", "성실히 나오시는 분", "평소 잘 나오시는 분". ' +
     'If everything is normal, say so briefly without inventing concerns. ' +
     'Output ONLY the briefing text.';
 
