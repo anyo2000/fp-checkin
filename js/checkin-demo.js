@@ -6,23 +6,35 @@ var _demoEmpName = '';
 var _demoBranchName = '';
 var _demoCustomTime = '08:32'; // 불러오기 누를 때 잠금되는 시연 시각
 
+var MILESTONE_LABELS = {
+  real: null,
+  firstOfMonth: '이번달 첫 출근',
+  month5: '이번달 5일째 출근',
+  month10: '이번달 10일째 출근',
+  month20huge: '이번달 20일째 — 만근 코앞',
+  streak3: '연속 3일 출근',
+  streak7: '연속 7일 출근',
+  streak30huge: '연속 30일 — 신기록',
+  late: null,
+  newbie: '첫 등록 완료',
+};
+
 function setScenario(btn) {
   document.querySelectorAll('.demo-scenario').forEach(function (b) { b.classList.remove('active'); });
   btn.classList.add('active');
   _demoScenario = btn.getAttribute('data-sc');
 
-  // 시나리오 선택 즉시 화면 미리보기 — progress·streak·weekly·버튼 갱신
-  // applyScenario가 today.checkin=false 강제하므로 출근 버튼 항상 활성
-  if (!_demoStatus) return;
-  var preview = applyScenario(_demoScenario, _demoStatus);
-  if (typeof renderWeekly === 'function' && preview.weekly) renderWeekly(preview.weekly);
-  if (typeof renderProgress === 'function') renderProgress(preview);
-  if (typeof renderStreak === 'function') renderStreak(preview);
-  if (typeof updateEventButton === 'function') {
-    updateEventButton('출근', preview);
-    updateEventButton('귀소', preview);
-    updateEventButton('학습회', preview);
-    updateEventButton('퇴근', preview);
+  // 화면 미리보기 변경 X — 시나리오 인디케이터만 표시
+  var indicator = document.getElementById('scenarioIndicator');
+  if (indicator) {
+    var label = MILESTONE_LABELS[_demoScenario];
+    if (_demoScenario === 'real') {
+      indicator.textContent = '시나리오: 그대로 (출근해도 마일스톤 없음)';
+    } else if (_demoScenario === 'late') {
+      indicator.textContent = '시나리오: 지각 09:15 톤 (마일스톤 없음)';
+    } else if (label) {
+      indicator.textContent = '시나리오: 출근 누르면 "' + label + '" 발동';
+    }
   }
 }
 
@@ -144,14 +156,32 @@ function buildFakeResult(scenario, eventType) {
     else status = 'working';
   }
 
+  // scanCount도 시나리오 기반 (마일스톤 배너와 일치)
+  var scenarioStatus = applyScenario(scenario, _demoStatus || {});
+  var scanCount = (scenarioStatus.monthCheckinDays || 0) + 1;
+
   return {
     success: true,
     type: eventType,
     time: timeStr,
     status: status,
     branch: _demoBranchName,
-    scanCount: (_demoStatus && _demoStatus.monthCheckinDays || 0) + 1,
+    scanCount: scanCount,
   };
+}
+
+function showMilestoneBanner(scenario) {
+  var label = MILESTONE_LABELS[scenario];
+  var banner = document.getElementById('milestoneBanner');
+  if (!banner) return;
+  if (!label) { banner.style.display = 'none'; return; }
+  var textEl = document.getElementById('milestoneText');
+  if (textEl) textEl.textContent = label;
+  // 컨페티 직후 살짝 늦게 등장
+  banner.style.display = 'none';
+  setTimeout(function () {
+    banner.style.display = 'inline-flex';
+  }, 400);
 }
 
 async function demoEventCheckin(eventType) {
@@ -174,6 +204,8 @@ async function demoEventCheckin(eventType) {
     if (typeof showSuccess === 'function') {
       showSuccess(document.getElementById('demoEmpId').value.trim(), fakeResult, _demoEmpName);
     }
+    // 마일스톤 배너 (시나리오에 해당 라벨 있을 때만, 출근에 한해)
+    if (eventType === '출근') showMilestoneBanner(_demoScenario);
   }, 600);
 }
 
@@ -182,11 +214,21 @@ function resetDemo() {
   successEl.classList.remove('show');
   successEl.style.display = 'none';
 
-  // 토큰 화면 다시 표시 + 효과 재실행 위해 status 다시 적용
+  var banner = document.getElementById('milestoneBanner');
+  if (banner) banner.style.display = 'none';
+
+  // 토큰 화면 다시 표시 + 진짜 상태 (today.checkin=false 강제)로 복원
   document.getElementById('tokenSection').style.display = 'block';
   if (_demoStatus) {
-    if (typeof renderWeekly === 'function' && _demoStatus.weekly) renderWeekly(_demoStatus.weekly);
-    if (typeof renderProgress === 'function') renderProgress(_demoStatus);
-    if (typeof renderStreak === 'function') renderStreak(_demoStatus);
+    var preview = applyScenario('real', _demoStatus);
+    if (typeof renderWeekly === 'function' && preview.weekly) renderWeekly(preview.weekly);
+    if (typeof renderProgress === 'function') renderProgress(preview);
+    if (typeof renderStreak === 'function') renderStreak(preview);
+    if (typeof updateEventButton === 'function') {
+      updateEventButton('출근', preview);
+      updateEventButton('귀소', preview);
+      updateEventButton('학습회', preview);
+      updateEventButton('퇴근', preview);
+    }
   }
 }

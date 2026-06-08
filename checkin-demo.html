@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FP 모닝 브리핑 — 데모</title>
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
-  <link rel="stylesheet" href="css/style.css?v=4.2">
+  <link rel="stylesheet" href="css/style.css?v=4.3">
   <style>
     .demo-banner {
       background: #FEF3F2;
@@ -109,6 +109,40 @@
       color: var(--color-text-muted);
       margin-left: auto;
     }
+    .scenario-indicator {
+      font-size: 12px;
+      color: var(--color-primary);
+      font-weight: 700;
+      padding: 8px 10px;
+      background: #FFF4EC;
+      border: 1px dashed var(--color-primary);
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+    .milestone-banner {
+      background: linear-gradient(135deg, #FF6600 0%, #FF9933 100%);
+      color: white;
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin: 16px auto 0;
+      box-shadow: 0 6px 18px rgba(255, 102, 0, 0.4);
+      animation: milestonePop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+      letter-spacing: -0.3px;
+    }
+    .milestone-banner .milestone-sub {
+      font-weight: 600;
+      opacity: 0.85;
+      font-size: 12px;
+    }
+    @keyframes milestonePop {
+      0% { transform: scale(0.4) translateY(8px); opacity: 0; }
+      100% { transform: scale(1) translateY(0); opacity: 1; }
+    }
     .demo-scenarios {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -175,6 +209,7 @@
         <div class="demo-empinfo" id="demoEmpInfo" style="display:none;"></div>
 
         <h3 style="margin-top:14px;">2) 시나리오 강제 (출근 누를 때 적용)</h3>
+        <div class="scenario-indicator" id="scenarioIndicator">시나리오: 그대로 (출근해도 마일스톤 없음)</div>
         <div class="demo-scenarios">
           <button class="demo-scenario active" data-sc="real" onclick="setScenario(this)">그대로 (진짜 상태)</button>
           <button class="demo-scenario" data-sc="month5" onclick="setScenario(this)">이번달 5일째 마일스톤</button>
@@ -276,6 +311,13 @@
           <div class="result-time" id="resultTime">08:42</div>
           <div class="result-detail" id="resultDetail"></div>
 
+          <!-- 마일스톤 배너 (시나리오 적용 시 발동) -->
+          <div class="milestone-banner" id="milestoneBanner" style="display:none;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <span id="milestoneText">·</span>
+            <span class="milestone-sub">달성</span>
+          </div>
+
           <div class="ai-greet-card result-greet">
             <span class="ai-badge">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
@@ -293,8 +335,8 @@
 
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
   <script>window.__SKIP_AUTO_INIT = true;</script>
-  <script src="js/config.js?v=4.2"></script>
-  <script src="js/checkin.js?v=4.2"></script>
-  <script src="js/checkin-demo.js?v=4.2"></script>
+  <script src="js/config.js?v=4.3"></script>
+  <script src="js/checkin.js?v=4.3"></script>
+  <script src="js/checkin-demo.js?v=4.3"></script>
 </body>
 </html>
