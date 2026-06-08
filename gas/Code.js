@@ -297,6 +297,121 @@ function getLogSheet() {
   return SpreadsheetApp.getActiveSpreadsheet().getSheetByName('출석로그');
 }
 
+function getArchiveSheet(createIfMissing) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('출석로그_archive');
+  if (!sheet && createIfMissing) {
+    sheet = ss.insertSheet('출석로그_archive');
+    var src = getLogSheet();
+    if (src) {
+      var header = src.getRange(1, 1, 1, src.getLastColumn()).getValues();
+      sheet.getRange(1, 1, 1, header[0].length).setValues(header);
+    }
+  }
+  return sheet;
+}
+
+function thisMonthKey() {
+  return Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM');
+}
+
+// 날짜 범위(YYYY-MM-DD)에 따라 본 시트만 / 아카이브만 / 둘 다 자동 라우팅.
+// 헤더 제외한 데이터 행만 반환.
+function getLogsForDateRange(startDate, endDate) {
+  var currentMonth = thisMonthKey();
+  var startMonth = String(startDate || '').slice(0, 7);
+  var endMonth = String(endDate || startDate || '').slice(0, 7);
+
+  // 범위 미지정 시 본 시트만 (성능 우선 폴백)
+  var needMain = !startMonth || endMonth >= currentMonth || !endMonth;
+  var needArchive = startMonth && startMonth < currentMonth;
+
+  var rows = [];
+  if (needMain) {
+    var src = getLogSheet();
+    if (src && src.getLastRow() > 1) {
+      var mainData = src.getDataRange().getValues();
+      for (var i = 1; i < mainData.length; i++) rows.push(mainData[i]);
+    }
+  }
+  if (needArchive) {
+    var arch = getArchiveSheet(false);
+    if (arch && arch.getLastRow() > 1) {
+      var archData = arch.getDataRange().getValues();
+      for (var j = 1; j < archData.length; j++) rows.push(archData[j]);
+    }
+  }
+  return rows;
+}
+
+function getLogsForMonth(month) {
+  var firstDay = month + '-01';
+  return getLogsForDateRange(firstDay, firstDay);
+}
+
+// ========== 월별 아카이브 ==========
+
+// 이번달 이전 데이터를 본 시트 → 아카이브 시트로 이동
+// GAS 에디터에서 한 번 수동 실행 (이후엔 트리거가 자동)
+function archiveOldMonths() {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) {
+    return { error: '다른 작업이 진행 중입니다. 잠시 후 다시 시도해주세요.' };
+  }
+  try {
+    var src = getLogSheet();
+    if (!src || src.getLastRow() <= 1) return { moved: 0, kept: 0 };
+
+    var data = src.getDataRange().getValues();
+    var header = data[0];
+    var currentMonth = thisMonthKey();
+    var toMove = [];
+    var keepRows = [header];
+
+    for (var i = 1; i < data.length; i++) {
+      var d = toDateString(data[i][6]);
+      var rowMonth = d ? d.slice(0, 7) : '';
+      if (rowMonth && rowMonth < currentMonth) {
+        toMove.push(data[i]);
+      } else {
+        keepRows.push(data[i]);
+      }
+    }
+
+    if (toMove.length === 0) {
+      return { moved: 0, kept: keepRows.length - 1, message: '아카이브할 옛 데이터가 없습니다' };
+    }
+
+    var arch = getArchiveSheet(true);
+    var archStart = arch.getLastRow() + 1;
+    arch.getRange(archStart, 1, toMove.length, toMove[0].length).setValues(toMove);
+    SpreadsheetApp.flush();
+
+    src.clear();
+    src.getRange(1, 1, keepRows.length, keepRows[0].length).setValues(keepRows);
+
+    return { moved: toMove.length, kept: keepRows.length - 1, archiveSheet: '출석로그_archive' };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// 매월 1일 03:00 자동 아카이브 트리거 등록 (GAS 에디터에서 한 번 수동 실행)
+function setupMonthlyArchiveTrigger() {
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === 'archiveOldMonths') {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+  ScriptApp.newTrigger('archiveOldMonths')
+    .timeBased()
+    .onMonthDay(1)
+    .atHour(3)
+    .create();
+  return { success: true, message: '매월 1일 03:00 자동 아카이브 등록 완료' };
+}
+
 function toDateString(val) {
   if (val instanceof Date) return Utilities.formatDate(val, 'Asia/Seoul', 'yyyy-MM-dd');
   if (typeof val === 'object' && val !== null && val.getFullYear) {
@@ -324,6 +439,41 @@ function toTimeHHMM(val) {
   if (s.match(/^\d{2}:\d{2}:\d{2}$/)) return s.slice(0, 5);
   if (s.match(/^\d{2}:\d{2}$/)) return s;
   return s;
+}
+
+function hhmmToMinutes(hhmm) {
+  var s = String(hhmm || '').slice(0, 5);
+  var parts = s.split(':');
+  if (parts.length !== 2) return 0;
+  return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+}
+
+function minutesToHHMM(min) {
+  if (!isFinite(min) || min < 0) return '00:00';
+  return String(Math.floor(min / 60)).padStart(2, '0') + ':' + String(Math.round(min) % 60).padStart(2, '0');
+}
+
+function dateAddDays(dateStr, days) {
+  var d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return Utilities.formatDate(d, 'Asia/Seoul', 'yyyy-MM-dd');
+}
+
+// 종료일 포함, 거꾸로 거슬러 영업일(월~금) N개 반환 (최신 → 과거 순)
+function recentBusinessDays(endDate, count) {
+  var result = [];
+  var d = new Date(endDate);
+  // 안전 가드
+  var safety = 0;
+  while (result.length < count && safety < count * 3 + 14) {
+    var wd = d.getDay();
+    if (wd >= 1 && wd <= 5) {
+      result.push(Utilities.formatDate(d, 'Asia/Seoul', 'yyyy-MM-dd'));
+    }
+    d.setDate(d.getDate() - 1);
+    safety++;
+  }
+  return result;
 }
 
 // ========== 토큰 관리 ==========
@@ -523,11 +673,10 @@ function handleToday(params) {
   var code = params.code || params.branch || '';
   var codes = code ? getDescendantCodes(code) : [];
 
-  var sheet = getLogSheet();
-  var data = sheet.getDataRange().getValues();
+  var data = getLogsForDateRange(date, date);
   var records = [];
 
-  for (var i = 1; i < data.length; i++) {
+  for (var i = 0; i < data.length; i++) {
     if (toDateString(data[i][6]) !== date) continue;
     var recordBranch = String(data[i][3]).trim();
     if (code && codes.indexOf(recordBranch) < 0) continue;
@@ -562,8 +711,7 @@ function handleTodaySummary(params) {
   if (!code) return jsonOut([]);
 
   var children = getDirectChildren(code);
-  var sheet = getLogSheet();
-  var data = sheet.getDataRange().getValues();
+  var data = getLogsForDateRange(date, date);
 
   var result = [];
   for (var c = 0; c < children.length; c++) {
@@ -572,7 +720,7 @@ function handleTodaySummary(params) {
     var s = { code: child.code, name: child.name, level: child.level, total: 0, normalCount: 0, lateCount: 0, workingCount: 0, returnCount: 0 };
     var seen = {};
 
-    for (var i = 1; i < data.length; i++) {
+    for (var i = 0; i < data.length; i++) {
       if (toDateString(data[i][6]) !== date) continue;
       var rb = String(data[i][3]).trim();
       if (childCodes.indexOf(rb) < 0) continue;
@@ -605,11 +753,10 @@ function handleSummary(params) {
   if (!month) return jsonOut([]);
 
   var codes = code ? getDescendantCodes(code) : [];
-  var sheet = getLogSheet();
-  var data = sheet.getDataRange().getValues();
+  var data = getLogsForMonth(month);
 
   var byEmp = {};
-  for (var i = 1; i < data.length; i++) {
+  for (var i = 0; i < data.length; i++) {
     var rowDate = toDateString(data[i][6]);
     if (!rowDate || !rowDate.startsWith(month)) continue;
     var rb = String(data[i][3]).trim();
@@ -709,8 +856,6 @@ function handleSendEmail(data) {
 }
 
 function handleAlerts() {
-  var sheet = getLogSheet();
-  var data = sheet.getDataRange().getValues();
   var alerts = [];
 
   var recentDates = [];
@@ -720,8 +865,11 @@ function handleAlerts() {
     d.setDate(d.getDate() - 1);
   }
 
+  // 최근 7일이 월 경계 걸치는지 체크 — 라우팅에 startDate/endDate 활용
+  var data = getLogsForDateRange(recentDates[recentDates.length - 1], recentDates[0]);
+
   var empDates = {};
-  for (var j = 1; j < data.length; j++) {
+  for (var j = 0; j < data.length; j++) {
     var empId = String(data[j][1]).trim();
     var date = toDateString(data[j][6]);
     if (!empDates[empId]) empDates[empId] = {};
@@ -907,8 +1055,6 @@ function handleCheckStatus(params) {
   if (!emp) return jsonOut({ checkedIn: false, invalidToken: true });
 
   var today = todayString();
-  var sheet = getLogSheet();
-  var data = sheet.getDataRange().getValues();
   var hasCheckin = false;
   var hasReturn = false;
   var hasLearning = false;
@@ -927,7 +1073,10 @@ function handleCheckStatus(params) {
   var weekday = ['월', '화', '수', '목', '금'];
   var weekly = { '월': false, '화': false, '수': false, '목': false, '금': false };
 
-  for (var i = 1; i < data.length; i++) {
+  // 이번주가 월 경계 걸칠 수 있어 weekDates 범위 라우팅
+  var data = getLogsForDateRange(weekDates[0], weekDates[weekDates.length - 1]);
+
+  for (var i = 0; i < data.length; i++) {
     if (String(data[i][1]).trim() !== emp.empId) continue;
     var rowDate = toDateString(data[i][6]);
     var type = String(data[i][4]).trim();
@@ -978,6 +1127,97 @@ function handleCheckStatus(params) {
     weekly: weekly,
     branchName: branchName,
   });
+}
+
+// ========== 지점장 메모 ==========
+// 결근 분류에서 제외할 휴가·외근·교육 등 사유 등록
+
+function getMemoSheet(createIfMissing) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('지점장메모');
+  if (!sheet && createIfMissing) {
+    sheet = ss.insertSheet('지점장메모');
+    sheet.appendRow(['timestamp', 'date', 'branchCode', 'empId', 'empName', 'tag', 'reason', 'createdBy']);
+  }
+  return sheet;
+}
+
+function handleSetMemo(data) {
+  var date = String(data.date || todayString()).trim();
+  var branchCode = String(data.branchCode || data.code || '').trim();
+  var empId = String(data.empId || '').trim();
+  var empName = String(data.empName || '').trim();
+  var tag = String(data.tag || '기타').trim();
+  var reason = String(data.reason || '').trim();
+  var createdBy = String(data.adminCode || '').trim();
+
+  if (!empId || !branchCode) return jsonOut({ success: false, error: '필수 정보 누락' });
+
+  var sheet = getMemoSheet(true);
+  sheet.appendRow([new Date().toISOString(), date, branchCode, empId, empName, tag, reason, createdBy]);
+  return jsonOut({ success: true });
+}
+
+function handleGetMemos(params) {
+  var date = String(params.date || todayString()).trim();
+  var code = String(params.code || params.branchCode || '').trim();
+
+  var sheet = getMemoSheet(false);
+  if (!sheet) return jsonOut([]);
+
+  var data = sheet.getDataRange().getValues();
+  var codes = code ? getDescendantCodes(code) : [];
+  var result = [];
+
+  for (var i = 1; i < data.length; i++) {
+    var rowDate = String(data[i][1]).trim();
+    var rowBranch = String(data[i][2]).trim();
+    if (rowDate !== date) continue;
+    if (code && codes.indexOf(rowBranch) < 0) continue;
+    result.push({
+      timestamp: data[i][0],
+      date: rowDate,
+      branchCode: rowBranch,
+      empId: String(data[i][3]).trim(),
+      empName: String(data[i][4] || '').trim(),
+      tag: String(data[i][5] || '').trim(),
+      reason: String(data[i][6] || '').trim(),
+    });
+  }
+  return jsonOut(result);
+}
+
+function handleDeleteMemo(data) {
+  var timestamp = String(data.timestamp || '').trim();
+  if (!timestamp) return jsonOut({ success: false, error: 'timestamp 필요' });
+
+  var sheet = getMemoSheet(false);
+  if (!sheet) return jsonOut({ success: false, error: '메모 시트가 없습니다' });
+
+  var rows = sheet.getDataRange().getValues();
+  for (var i = rows.length - 1; i >= 1; i--) {
+    if (String(rows[i][0]).trim() === timestamp) {
+      sheet.deleteRow(i + 1);
+      return jsonOut({ success: true });
+    }
+  }
+  return jsonOut({ success: false, error: '메모를 찾을 수 없어요' });
+}
+
+// 메모 사번 set 반환 — handleDailyInsight에서 결근 분류 제외용
+function getMemoEmpIdSetForDate(date, branchCodes) {
+  var sheet = getMemoSheet(false);
+  if (!sheet) return {};
+  var data = sheet.getDataRange().getValues();
+  var set = {};
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][1]).trim() !== date) continue;
+    var rb = String(data[i][2]).trim();
+    if (branchCodes && branchCodes.length > 0 && branchCodes.indexOf(rb) < 0) continue;
+    var empId = String(data[i][3]).trim();
+    if (empId) set[empId] = { tag: String(data[i][5] || '').trim(), reason: String(data[i][6] || '').trim() };
+  }
+  return set;
 }
 
 // ========== Claude API ==========
@@ -1059,90 +1299,321 @@ function handleGreeting(data) {
   return jsonOut({ success: true, greeting: result.text });
 }
 
+// 최근 30영업일 데이터 → 한 응답에 변동 인사이트·시간 변화·결근 분류·그래프 데이터·메모·오늘의 한 사람 다 담음
+function buildDailyInsight(code, date) {
+  var node = getOrgNode(code);
+  var branchName = node ? node.name : code;
+  var codes = getDescendantCodes(code);
+
+  var thirtyDaysAgo = dateAddDays(date, -45); // 영업일 30개 확보 위해 캘린더 45일
+  var data = getLogsForDateRange(thirtyDaysAgo, date);
+
+  // 사원별 데이터 집계
+  var empData = {};
+  for (var i = 0; i < data.length; i++) {
+    var rowDate = toDateString(data[i][6]);
+    if (!rowDate || rowDate < thirtyDaysAgo || rowDate > date) continue;
+    var rb = String(data[i][3]).trim();
+    if (codes.indexOf(rb) < 0) continue;
+
+    var empId = String(data[i][1]).trim();
+    var empName = String(data[i][2] || '').trim();
+    var type = String(data[i][4]).trim();
+    var time = toTimeHHMM(data[i][5]);
+
+    if (!empData[empId]) empData[empId] = { name: empName, branch: rb, days: {} };
+    if (!empData[empId].days[rowDate]) empData[empId].days[rowDate] = {};
+    empData[empId].days[rowDate][type] = time;
+  }
+
+  var bizDays30 = recentBusinessDays(date, 30);
+  var bizDays14 = recentBusinessDays(date, 14);
+  var bizDays5 = bizDays30.slice(0, 5);
+  var empIds = Object.keys(empData);
+
+  // 오늘 카운트 + 시간대 분포
+  var todayCheckin = 0, todayLate = 0, todayReturn = 0, todayLeave = 0, todayLearning = 0;
+  var lateList = [];
+  var timeDist = { before8: 0, eight_eightFifty: 0, nearNine: 0, after9: 0 };
+
+  for (var k = 0; k < empIds.length; k++) {
+    var emp = empData[empIds[k]];
+    var todayLog = emp.days[date];
+    if (!todayLog) continue;
+    if (todayLog['출근']) {
+      todayCheckin++;
+      var t = todayLog['출근'];
+      var cfg = getThresholdConfig(emp.branch);
+      var st = getAttendanceStatus(t, cfg);
+      if (st === 'late' || st === 'working') {
+        todayLate++;
+        lateList.push(emp.name + ' ' + t);
+      }
+      var minutes = hhmmToMinutes(t);
+      if (minutes < 8 * 60) timeDist.before8++;
+      else if (minutes < 8 * 60 + 50) timeDist.eight_eightFifty++;
+      else if (minutes < 9 * 60) timeDist.nearNine++;
+      else timeDist.after9++;
+    }
+    if (todayLog['귀소']) todayReturn++;
+    if (todayLog['퇴근']) todayLeave++;
+    if (todayLog['학습회']) todayLearning++;
+  }
+
+  // trendSeries — 14영업일 (오래된 순)
+  var trendSeries = [];
+  for (var bd = bizDays14.length - 1; bd >= 0; bd--) {
+    var d2 = bizDays14[bd];
+    var count = 0;
+    for (var k2 = 0; k2 < empIds.length; k2++) {
+      if (empData[empIds[k2]].days[d2] && empData[empIds[k2]].days[d2]['출근']) count++;
+    }
+    var dt = new Date(d2);
+    trendSeries.push({
+      date: d2,
+      label: (dt.getMonth() + 1) + '/' + dt.getDate(),
+      weekday: ['일', '월', '화', '수', '목', '금', '토'][dt.getDay()],
+      count: count,
+      isToday: d2 === date,
+    });
+  }
+
+  // 평소 평균 (최근 14영업일 — 오늘 제외)
+  var pastCounts = [];
+  for (var bd2 = 0; bd2 < bizDays14.length; bd2++) {
+    if (bizDays14[bd2] === date) continue;
+    var c2 = 0;
+    for (var k4 = 0; k4 < empIds.length; k4++) {
+      if (empData[empIds[k4]].days[bizDays14[bd2]] && empData[empIds[k4]].days[bizDays14[bd2]]['출근']) c2++;
+    }
+    pastCounts.push(c2);
+  }
+  var avgCheckin = pastCounts.length > 0
+    ? Math.round(pastCounts.reduce(function (a, b) { return a + b; }, 0) / pastCounts.length)
+    : todayCheckin;
+  var delta = todayCheckin - avgCheckin;
+  var trend = delta > 1 ? '상승' : (delta < -1 ? '하락' : '안정');
+
+  // 요일 컨텍스트
+  var todayDateObj = new Date(date);
+  var weekdayLabel = ['일', '월', '화', '수', '목', '금', '토'][todayDateObj.getDay()];
+  var weekdayCounts = [];
+  for (var w = 1; w <= 4; w++) {
+    var pastDateObj = new Date(todayDateObj.getTime() - w * 7 * 86400000);
+    var pastStr = Utilities.formatDate(pastDateObj, 'Asia/Seoul', 'yyyy-MM-dd');
+    if (pastStr < thirtyDaysAgo) break;
+    var wc = 0;
+    for (var k3 = 0; k3 < empIds.length; k3++) {
+      if (empData[empIds[k3]].days[pastStr] && empData[empIds[k3]].days[pastStr]['출근']) wc++;
+    }
+    weekdayCounts.push(wc);
+  }
+  var weekdayAvg = weekdayCounts.length > 0
+    ? Math.round(weekdayCounts.reduce(function (a, b) { return a + b; }, 0) / weekdayCounts.length)
+    : 0;
+  var weekdayDelta = todayCheckin - weekdayAvg;
+
+  // 메모 — 결근 분류 제외용
+  var memos = getMemoEmpIdSetForDate(date, codes);
+
+  // 결근 분류
+  var unusualAbsentees = [];
+  var longTermAbsentees = [];
+  for (var k5 = 0; k5 < empIds.length; k5++) {
+    var eid = empIds[k5];
+    var emp2 = empData[eid];
+    var todayCk = emp2.days[date] && emp2.days[date]['출근'];
+    if (todayCk) continue;
+    if (memos[eid]) continue;
+
+    // 출근율 (지난 30영업일, 오늘 제외)
+    var checkinDays = 0;
+    var lastSeen = null;
+    for (var b30 = 0; b30 < bizDays30.length; b30++) {
+      var bd30 = bizDays30[b30];
+      if (bd30 === date) continue;
+      if (emp2.days[bd30] && emp2.days[bd30]['출근']) {
+        checkinDays++;
+        if (!lastSeen) lastSeen = bd30;
+      }
+    }
+    var denom = bizDays30.length - 1;
+    var usualRate = denom > 0 ? checkinDays / denom : 0;
+
+    // 최근 5영업일 출근 횟수
+    var recent5Checkin = 0;
+    for (var r5 = 0; r5 < bizDays5.length; r5++) {
+      if (emp2.days[bizDays5[r5]] && emp2.days[bizDays5[r5]]['출근']) recent5Checkin++;
+    }
+
+    if (recent5Checkin === 0) {
+      longTermAbsentees.push({
+        empId: eid, name: emp2.name, branch: emp2.branch,
+        usualRate: Math.round(usualRate * 100), lastSeen: lastSeen,
+      });
+    } else if (usualRate >= 0.7) {
+      unusualAbsentees.push({
+        empId: eid, name: emp2.name, branch: emp2.branch,
+        usualRate: Math.round(usualRate * 100), lastSeen: lastSeen,
+      });
+    }
+  }
+  // 정렬
+  unusualAbsentees.sort(function (a, b) { return b.usualRate - a.usualRate; });
+  longTermAbsentees.sort(function (a, b) {
+    if (!a.lastSeen && !b.lastSeen) return 0;
+    if (!a.lastSeen) return 1;
+    if (!b.lastSeen) return -1;
+    return a.lastSeen < b.lastSeen ? 1 : -1;
+  });
+
+  // 개인별 시간 변화 (오늘 출근자 중 평소 대비 30분 이상 차이)
+  var individualShifts = [];
+  var earliestBizDay = bizDays14[bizDays14.length - 1];
+  for (var k6 = 0; k6 < empIds.length; k6++) {
+    var eid2 = empIds[k6];
+    var emp3 = empData[eid2];
+    var todayLog2 = emp3.days[date];
+    if (!todayLog2 || !todayLog2['출근']) continue;
+
+    var todayTime = todayLog2['출근'];
+    var todayMin = hhmmToMinutes(todayTime);
+
+    var times = [];
+    for (var d3 in emp3.days) {
+      if (d3 === date) continue;
+      if (d3 < earliestBizDay) continue;
+      if (emp3.days[d3]['출근']) times.push(hhmmToMinutes(emp3.days[d3]['출근']));
+    }
+    if (times.length < 3) continue;
+    var avgMin = times.reduce(function (a, b) { return a + b; }, 0) / times.length;
+    var diff = todayMin - avgMin;
+    if (Math.abs(diff) >= 30) {
+      individualShifts.push({
+        empId: eid2, name: emp3.name,
+        todayTime: todayTime,
+        usualTime: minutesToHHMM(Math.round(avgMin)),
+        diffMinutes: Math.round(diff),
+      });
+    }
+  }
+  individualShifts.sort(function (a, b) { return Math.abs(b.diffMinutes) - Math.abs(a.diffMinutes); });
+  individualShifts = individualShifts.slice(0, 5);
+
+  // 오늘의 한 사람
+  var personOfDay = null;
+  if (unusualAbsentees.length > 0) {
+    var u = unusualAbsentees[0];
+    personOfDay = {
+      type: 'unusual_absence',
+      empId: u.empId, name: u.name,
+      headline: u.name + ' 결근',
+      reason: '평소 출근율 ' + u.usualRate + '%, 오늘 결근',
+    };
+  } else if (individualShifts.length > 0) {
+    var top = individualShifts[0];
+    var d4 = top.diffMinutes;
+    personOfDay = {
+      type: d4 > 0 ? 'late_shift' : 'early_shift',
+      empId: top.empId, name: top.name,
+      headline: top.name + ' 출근 시간 변화',
+      reason: '평소 ' + top.usualTime + ' → 오늘 ' + top.todayTime + ' (' + (d4 > 0 ? '+' : '') + d4 + '분)',
+    };
+  } else if (longTermAbsentees.length > 0) {
+    var l0 = longTermAbsentees[0];
+    personOfDay = {
+      type: 'long_term',
+      empId: l0.empId, name: l0.name,
+      headline: l0.name + ' 장기 미출근',
+      reason: '최근 5영업일 0회 출근',
+    };
+  }
+
+  // 메모 리스트 (응답에 포함)
+  var memoList = [];
+  for (var mid in memos) {
+    var emp4 = empData[mid];
+    memoList.push({
+      empId: mid,
+      name: emp4 ? emp4.name : '',
+      tag: memos[mid].tag,
+      reason: memos[mid].reason,
+    });
+  }
+
+  return {
+    branchName: branchName,
+    date: date,
+    today: {
+      checkin: todayCheckin, late: todayLate,
+      return: todayReturn, leave: todayLeave, learning: todayLearning,
+    },
+    baseline: { avgCheckin: avgCheckin, delta: delta, trend: trend },
+    weekdayContext: { weekday: weekdayLabel, weekdayAvg: weekdayAvg, weekdayDelta: weekdayDelta },
+    trendSeries: trendSeries,
+    timeDistribution: timeDist,
+    absentees: { unusual: unusualAbsentees, longTerm: longTermAbsentees },
+    individualShifts: individualShifts,
+    memos: memoList,
+    personOfDay: personOfDay,
+    lateList: lateList,
+  };
+}
+
+function handleDailyInsight(params) {
+  var code = String(params.code || params.branch || '').trim();
+  var date = String(params.date || todayString()).trim();
+  if (!code) return jsonOut({ success: false, error: 'code 필요' });
+  var insight = buildDailyInsight(code, date);
+  return jsonOut({ success: true, insight: insight });
+}
+
 function handleBriefing(data) {
   var code = String(data.code || '').trim();
   var date = String(data.date || todayString()).trim();
   if (!code) return jsonOut({ success: false, error: 'code 필요' });
 
-  // 오늘 현황 데이터 수집
-  var node = getOrgNode(code);
-  var branchName = node ? node.name : code;
-  var codes = getDescendantCodes(code);
-  var sheet = getLogSheet();
-  var allData = sheet.getDataRange().getValues();
+  var insight = buildDailyInsight(code, date);
 
-  var seenCheckin = {};
-  var seenReturn = {};
-  var seenLearning = {};
-  var seenLeave = {};
-  var lateList = [];
-  var normalCount = 0;
-  var lateCount = 0;
-  var workingCount = 0;
-
-  for (var i = 1; i < allData.length; i++) {
-    if (toDateString(allData[i][6]) !== date) continue;
-    var rb = String(allData[i][3]).trim();
-    if (codes.indexOf(rb) < 0) continue;
-
-    var empId = String(allData[i][1]).trim();
-    var empName = String(allData[i][2] || '').trim();
-    var type = String(allData[i][4]).trim();
-    var timeHHMM = toTimeHHMM(allData[i][5]);
-
-    if (type === '출근' && !seenCheckin[empId]) {
-      seenCheckin[empId] = true;
-      var cfg = getThresholdConfig(rb);
-      var st = getAttendanceStatus(timeHHMM, cfg);
-      if (st === 'normal') normalCount++;
-      else if (st === 'late') { lateCount++; lateList.push(empName + ' ' + timeHHMM); }
-      else workingCount++;
-    } else if (type === '귀소' && !seenReturn[empId]) {
-      seenReturn[empId] = true;
-    } else if (type === '학습회' && !seenLearning[empId]) {
-      seenLearning[empId] = true;
-    } else if (type === '퇴근' && !seenLeave[empId]) {
-      seenLeave[empId] = true;
-    }
-  }
-
-  var totalCheckin = Object.keys(seenCheckin).length;
-  var totalReturn = Object.keys(seenReturn).length;
-  var totalLearning = Object.keys(seenLearning).length;
-  var totalLeave = Object.keys(seenLeave).length;
-
+  // AI 프롬프트 — "변화 + 행동 제안" 톤
   var hour = parseInt(Utilities.formatDate(new Date(), 'Asia/Seoul', 'HH'));
-  var weekday = ['일', '월', '화', '수', '목', '금', '토'][new Date().getDay()];
+  var unusualText = insight.absentees.unusual.length > 0
+    ? insight.absentees.unusual.slice(0, 5).map(function (a) { return a.name + '(평소 ' + a.usualRate + '%)'; }).join(', ')
+    : '없음';
+  var shiftText = insight.individualShifts.length > 0
+    ? insight.individualShifts.slice(0, 3).map(function (s) { return s.name + ' ' + s.usualTime + '→' + s.todayTime + '(' + (s.diffMinutes > 0 ? '+' : '') + s.diffMinutes + '분)'; }).join(', ')
+    : '없음';
+  var memoText = insight.memos.length > 0
+    ? insight.memos.map(function (m) { return m.name + '(' + m.tag + ')'; }).join(', ')
+    : '없음';
 
   var systemPrompt = 'You are a sharp morning briefing assistant for a Korean insurance branch manager (지점장). ' +
-    'Given today\'s attendance numbers, write a brief Korean briefing (3-4 short sentences, max 200 chars total). ' +
-    'Open with the headline number, then one observation, then one actionable suggestion. ' +
-    'Tone: confident, concise, like a chief of staff — not corporate fluff. ' +
-    'No emojis, no clichés. Output ONLY the briefing text.';
+    'Given today\'s attendance insight (anomalies, shifts, absentees), write a concise Korean briefing (3-4 short sentences, max 220 chars). ' +
+    'Structure: (1) Headline number with delta vs baseline. (2) The single most important anomaly (unusual absence OR significant time shift). (3) Concrete action item ("○○님 확인 권장" 같은 행동 제안). ' +
+    'Tone: confident chief-of-staff briefing — not corporate fluff. Never use clichés like "화이팅", "수고". No emojis. ' +
+    'If everything is normal, say so briefly without inventing concerns. ' +
+    'Output ONLY the briefing text.';
 
-  var userPrompt = '지점: ' + branchName + '\n' +
-    '날짜: ' + date + ' (' + weekday + '요일) 현재 ' + hour + '시\n' +
-    '출근 ' + totalCheckin + '명 (정시 ' + normalCount + ' / 지각 ' + lateCount + ' / 늦은출근 ' + workingCount + ')\n' +
-    '귀소 ' + totalReturn + '명 · 학습회 ' + totalLearning + '명 · 퇴근 ' + totalLeave + '명\n' +
-    (lateList.length > 0 ? '지각자: ' + lateList.slice(0, 5).join(', ') + '\n' : '') +
-    '\n위 데이터로 지점장 아침 브리핑 작성.';
+  var userPrompt = '지점: ' + insight.branchName + '\n' +
+    '날짜: ' + date + ' (' + insight.weekdayContext.weekday + ') 현재 ' + hour + '시\n' +
+    '오늘 출근: ' + insight.today.checkin + '명 (지각 ' + insight.today.late + ')\n' +
+    '평소 평균(14영업일): ' + insight.baseline.avgCheckin + '명 → 변동 ' + (insight.baseline.delta >= 0 ? '+' : '') + insight.baseline.delta + ' (' + insight.baseline.trend + ')\n' +
+    '같은 ' + insight.weekdayContext.weekday + ' 4주 평균: ' + insight.weekdayContext.weekdayAvg + '명 → 변동 ' + (insight.weekdayContext.weekdayDelta >= 0 ? '+' : '') + insight.weekdayContext.weekdayDelta + '\n' +
+    '시간대 분포: 8시 전 ' + insight.timeDistribution.before8 + ' / 8~8:50 ' + insight.timeDistribution.eight_eightFifty + ' / 8:50~9시 ' + insight.timeDistribution.nearNine + ' / 9시 이후 ' + insight.timeDistribution.after9 + '\n' +
+    '평소 잘 나오시는데 오늘 결근: ' + unusualText + '\n' +
+    '오늘 출근 시간 큰 변화: ' + shiftText + '\n' +
+    '장기 미출근(최근 5영업일 0회): ' + insight.absentees.longTerm.length + '명\n' +
+    '메모(휴가·외근 등록): ' + memoText + '\n' +
+    '\n위 데이터로 지점장 아침 브리핑 작성. 변화 1~2개 + 행동 제안 1개 중심.';
 
-  var result = callClaude(systemPrompt, userPrompt, 400);
+  var result = callClaude(systemPrompt, userPrompt, 500);
   if (result.error) {
-    return jsonOut({ success: false, error: result.error });
+    return jsonOut({ success: false, error: result.error, insight: insight });
   }
   return jsonOut({
     success: true,
     briefing: result.text,
-    stats: {
-      totalCheckin: totalCheckin,
-      normalCount: normalCount,
-      lateCount: lateCount,
-      workingCount: workingCount,
-      totalReturn: totalReturn,
-      totalLearning: totalLearning,
-      totalLeave: totalLeave,
-    },
+    insight: insight,
   });
 }
 
@@ -1160,6 +1631,8 @@ function doPost(e) {
     if (data.action === 'greeting') return handleGreeting(data);
     if (data.action === 'briefing') return handleBriefing(data);
     if (data.action === 'setBranchLocation') return handleSetBranchLocation(data);
+    if (data.action === 'setMemo') return handleSetMemo(data);
+    if (data.action === 'deleteMemo') return handleDeleteMemo(data);
     return jsonOut({ success: false, error: 'Unknown action' });
   } catch (err) {
     return jsonOut({ success: false, error: err.message });
@@ -1177,6 +1650,8 @@ function doGet(e) {
     if (action === 'auditLog') return handleAuditLog(e.parameter);
     if (action === 'checkStatus') return handleCheckStatus(e.parameter);
     if (action === 'branchLocation') return handleGetBranchLocation(e.parameter);
+    if (action === 'dailyInsight') return handleDailyInsight(e.parameter);
+    if (action === 'memos') return handleGetMemos(e.parameter);
     return jsonOut({ error: 'Unknown action' });
   } catch (err) {
     return jsonOut({ error: err.message });

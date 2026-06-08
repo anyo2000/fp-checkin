@@ -302,13 +302,16 @@ function renderBreadcrumb() {
   loadBriefing();
 })();
 
+// 인사이트 + 브리핑 통합 로더
+var _lastInsight = null;
+
 async function loadBriefing() {
   var card = document.getElementById('aiBriefingCard');
   if (!card || !CONFIG.GAS_URL || !CODE) return;
 
   var date = document.getElementById('todayDate').value || '';
   card.style.display = 'block';
-  card.innerHTML = '<div class="ai-briefing"><div class="ai-briefing-header"><span class="ai-briefing-badge">AI 모닝 브리핑</span><span class="ai-briefing-meta">' + (ADMIN_NODE ? ADMIN_NODE.name : '') + ' · ' + date + '</span></div><div class="ai-briefing-body ai-briefing-loading">AI가 오늘 현황을 분석하는 중…</div></div>';
+  card.innerHTML = renderBriefingCard({ loading: true, date: date });
 
   try {
     var res = await fetch(CONFIG.GAS_URL, {
@@ -317,36 +320,234 @@ async function loadBriefing() {
       body: JSON.stringify({ action: 'briefing', code: CODE, date: date }),
     });
     var result = await res.json();
+    if (result.insight) {
+      _lastInsight = result.insight;
+      renderInsightKPI(result.insight);
+      renderTrendChart(result.insight.trendSeries);
+    }
     if (result.success && result.briefing) {
-      var s = result.stats || {};
-      card.innerHTML =
-        '<div class="ai-briefing">' +
-          '<div class="ai-briefing-header">' +
-            '<span class="ai-briefing-badge">AI 모닝 브리핑</span>' +
-            '<span class="ai-briefing-meta">' + (ADMIN_NODE ? ADMIN_NODE.name : '') + ' · ' + date + '</span>' +
-          '</div>' +
-          '<div class="ai-briefing-body">' + escapeHtml(result.briefing).replace(/\n/g, '<br>') + '</div>' +
-          '<div class="ai-briefing-stats">' +
-            '<span>출근 <b>' + (s.totalCheckin || 0) + '</b></span>' +
-            '<span>정상 <b>' + (s.normalCount || 0) + '</b></span>' +
-            '<span>지각 <b>' + (s.lateCount || 0) + '</b></span>' +
-            '<span>귀소 <b>' + (s.totalReturn || 0) + '</b></span>' +
-          '</div>' +
-        '</div>';
+      card.innerHTML = renderBriefingCard({ briefing: result.briefing, insight: result.insight, date: date });
     } else {
-      card.style.display = 'none';
-      console.warn('브리핑 생성 실패:', result.error);
+      card.innerHTML = renderBriefingCard({ error: result.error || '브리핑 생성 실패', insight: result.insight, date: date });
     }
   } catch (e) {
-    card.style.display = 'none';
+    card.innerHTML = renderBriefingCard({ error: '서버 연결 실패', date: date });
     console.error('브리핑 요청 실패:', e);
   }
 }
 
+function renderBriefingCard(opts) {
+  var meta = (ADMIN_NODE ? ADMIN_NODE.name : '') + ' · ' + (opts.date || '');
+  var body;
+  if (opts.loading) {
+    body = '<div class="ai-briefing-body ai-briefing-loading">AI가 오늘 현황을 분석하는 중<span class="dots"><i>.</i><i>.</i><i>.</i></span></div>';
+  } else if (opts.error) {
+    body = '<div class="ai-briefing-body ai-briefing-loading">' + escapeHtml(opts.error) + '</div>';
+  } else {
+    body = '<div class="ai-briefing-body">' + escapeHtml(opts.briefing).replace(/\n/g, '<br>') + '</div>';
+  }
+
+  var pod = '';
+  if (opts.insight && opts.insight.personOfDay) {
+    var p = opts.insight.personOfDay;
+    var icon = p.type === 'unusual_absence' ? '⚠' : (p.type === 'late_shift' ? '↘' : (p.type === 'early_shift' ? '↗' : '·'));
+    pod = '<div class="person-of-day"><span class="pod-icon">' + icon + '</span><span class="pod-text"><b>' + escapeHtml(p.headline) + '</b> · ' + escapeHtml(p.reason) + '</span></div>';
+  }
+
+  var stats = '';
+  if (opts.insight) {
+    var i = opts.insight;
+    var deltaSign = i.baseline.delta >= 0 ? '+' : '';
+    stats = '<div class="ai-briefing-stats">' +
+      '<span>오늘 출근 <b>' + i.today.checkin + '</b></span>' +
+      '<span>평소 평균 <b>' + i.baseline.avgCheckin + '</b> (' + deltaSign + i.baseline.delta + ')</span>' +
+      '<span>결근 <b>' + i.absentees.unusual.length + '</b></span>' +
+      '<span>지각 <b>' + i.today.late + '</b></span>' +
+    '</div>';
+  }
+
+  return '<div class="ai-briefing">' +
+    '<div class="ai-briefing-header">' +
+      '<span class="ai-briefing-badge">AI 모닝 브리핑</span>' +
+      '<span class="ai-briefing-meta">' + escapeHtml(meta) + '</span>' +
+    '</div>' +
+    body +
+    pod +
+    stats +
+  '</div>';
+}
+
+function renderInsightKPI(i) {
+  if (!i) return;
+  document.getElementById('todayTotal').textContent = i.today.checkin;
+  var delta = i.baseline.delta;
+  var deltaSign = delta > 0 ? '+' : '';
+  var deltaCls = delta > 0 ? 'delta-up' : (delta < 0 ? 'delta-down' : 'delta-neutral');
+  document.getElementById('todayTotalDelta').innerHTML = '<span class="' + deltaCls + '">평소 ' + i.baseline.avgCheckin + '명 (' + deltaSign + delta + ')</span>';
+
+  document.getElementById('todayUnusual').textContent = i.absentees.unusual.length;
+  document.getElementById('todayLate').textContent = i.today.late;
+  document.getElementById('todayLongTerm').textContent = i.absentees.longTerm.length;
+
+  document.getElementById('trendMeta').textContent = i.baseline.trend;
+}
+
+function renderTrendChart(series) {
+  var chart = document.getElementById('trendChart');
+  var axis = document.getElementById('trendAxis');
+  if (!chart || !series || series.length === 0) return;
+
+  var max = 0;
+  for (var i = 0; i < series.length; i++) max = Math.max(max, series[i].count);
+  if (max === 0) max = 1;
+
+  var w = 280, h = 90, padX = 10, padY = 10;
+  var n = series.length;
+  var step = (w - padX * 2) / Math.max(1, n - 1);
+
+  var points = '';
+  var dots = '';
+  for (var j = 0; j < n; j++) {
+    var x = padX + j * step;
+    var y = h - padY - ((series[j].count / max) * (h - padY * 2));
+    points += (j === 0 ? 'M' : 'L') + x + ',' + y + ' ';
+    var color = series[j].isToday ? '#FF6600' : '#001E4E';
+    var r = series[j].isToday ? 5 : 3;
+    dots += '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="' + color + '" />';
+  }
+
+  // 평균선
+  var avg = series.reduce(function (a, b) { return a + b.count; }, 0) / n;
+  var avgY = h - padY - ((avg / max) * (h - padY * 2));
+
+  chart.innerHTML = '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="width:100%; height:100%;">' +
+    '<line x1="' + padX + '" y1="' + avgY + '" x2="' + (w - padX) + '" y2="' + avgY + '" stroke="#CBD5E1" stroke-dasharray="3,3" />' +
+    '<path d="' + points + '" fill="none" stroke="#001E4E" stroke-width="1.5" />' +
+    dots +
+    '</svg>';
+
+  axis.innerHTML = series.map(function (s) {
+    var cls = s.isToday ? 'axis-today' : '';
+    return '<span class="' + cls + '">' + s.label + '</span>';
+  }).join('');
+}
+
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, function (c) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
   });
+}
+
+// ===== 결근/장기 미출근 모달 =====
+
+function openUnusualAbsentees() {
+  if (!_lastInsight) return;
+  openAbsenteeModal('갑자기 결근', '평소 잘 나오시던 분 중 오늘 결근', _lastInsight.absentees.unusual, true);
+}
+
+function openLongTermAbsentees() {
+  if (!_lastInsight) return;
+  openAbsenteeModal('장기 미출근', '최근 5영업일 중 한 번도 출근하지 않은 명단', _lastInsight.absentees.longTerm, true);
+}
+
+function openAbsenteeModal(title, subtitle, list, allowMemo) {
+  document.getElementById('absenteeModalTitle').textContent = title;
+  document.getElementById('absenteeModalSubtitle').textContent = subtitle;
+  var html;
+  if (!list || list.length === 0) {
+    html = '<div class="absentee-empty">해당 없음</div>';
+  } else {
+    html = list.map(function (a) {
+      var lastSeen = a.lastSeen ? ('마지막 출근: ' + a.lastSeen) : '기록 없음';
+      var memoBtn = allowMemo
+        ? '<button class="btn-sm btn-edit" onclick="openMemoFor(\'' + a.empId + '\', \'' + escapeHtml(a.name) + '\')">사유 등록</button>'
+        : '';
+      return '<div class="absentee-item">' +
+        '<div class="absentee-info">' +
+          '<div class="absentee-name">' + escapeHtml(a.name) + '</div>' +
+          '<div class="absentee-meta">사번 ' + escapeHtml(a.empId) + ' · 평소 출근율 ' + a.usualRate + '% · ' + lastSeen + '</div>' +
+        '</div>' +
+        '<div class="absentee-action">' + memoBtn + '</div>' +
+      '</div>';
+    }).join('');
+  }
+  document.getElementById('absenteeModalList').innerHTML = html;
+  document.getElementById('absenteeModal').style.display = 'flex';
+}
+
+function closeAbsenteeModal(e) {
+  if (e && e.target.id !== 'absenteeModal') return;
+  document.getElementById('absenteeModal').style.display = 'none';
+}
+
+// ===== 메모 모달 =====
+var _memoEmpId = '';
+var _memoEmpName = '';
+var _memoTag = '휴가';
+
+function openMemoFor(empId, empName) {
+  _memoEmpId = empId;
+  _memoEmpName = empName;
+  _memoTag = '휴가';
+  document.getElementById('memoEmpId').textContent = empId;
+  document.getElementById('memoEmpName').textContent = empName;
+  document.getElementById('memoReason').value = '';
+  document.getElementById('memoResult').textContent = '';
+  document.querySelectorAll('.memo-tag').forEach(function (b) {
+    b.classList.toggle('active', b.dataset.tag === '휴가');
+  });
+  document.getElementById('memoModal').style.display = 'flex';
+}
+
+function selectMemoTag(btn) {
+  _memoTag = btn.dataset.tag;
+  document.querySelectorAll('.memo-tag').forEach(function (b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+}
+
+function closeMemoModal(e) {
+  if (e && e.target.id !== 'memoModal') return;
+  document.getElementById('memoModal').style.display = 'none';
+}
+
+async function submitMemo() {
+  var date = document.getElementById('todayDate').value || '';
+  var reason = document.getElementById('memoReason').value.trim();
+  var resultEl = document.getElementById('memoResult');
+  resultEl.style.color = '#475569';
+  resultEl.textContent = '등록 중…';
+
+  try {
+    var res = await fetch(CONFIG.GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        action: 'setMemo',
+        date: date,
+        branchCode: CODE,
+        empId: _memoEmpId,
+        empName: _memoEmpName,
+        tag: _memoTag,
+        reason: reason,
+      }),
+    });
+    var r = await res.json();
+    if (r.success) {
+      resultEl.style.color = '#166534';
+      resultEl.textContent = '등록되었습니다. 화면을 새로고침합니다.';
+      setTimeout(function () {
+        closeMemoModal();
+        closeAbsenteeModal();
+        loadBriefing();
+      }, 600);
+    } else {
+      resultEl.style.color = '#dc2626';
+      resultEl.textContent = r.error || '등록 실패';
+    }
+  } catch (e) {
+    resultEl.style.color = '#dc2626';
+    resultEl.textContent = '서버 연결 실패';
+  }
 }
 
 async function loadOrgTree() {

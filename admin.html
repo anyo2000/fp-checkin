@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>관리자 — FP 모닝 브리핑</title>
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
-  <link rel="stylesheet" href="css/style.css?v=3.2">
+  <link rel="stylesheet" href="css/style.css?v=3.4">
 </head>
 <body>
   <div class="admin-page">
@@ -60,25 +60,43 @@
       <!-- 지역단 뷰: 지점별 요약 카드 -->
       <div id="regionSummaryCards" class="stats-grid" style="display:none;"></div>
 
-      <!-- 통계 카드 -->
-      <div id="todayStatsGrid" class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-value" id="todayTotal">-</div>
-          <div class="stat-label">출근</div>
+      <!-- KPI 4개 (변동 표시) + 우측 추세 그래프 -->
+      <div class="insight-grid">
+        <div class="kpi-grid">
+          <div class="stat-card kpi-card">
+            <div class="stat-label">출근</div>
+            <div class="stat-value" id="todayTotal">-</div>
+            <div class="stat-delta" id="todayTotalDelta"></div>
+          </div>
+          <div class="stat-card kpi-card kpi-clickable" onclick="openUnusualAbsentees()">
+            <div class="stat-label">결근 (갑자기)</div>
+            <div class="stat-value" id="todayUnusual">-</div>
+            <div class="stat-delta" id="todayUnusualSub">평소 잘 나오시던 분</div>
+          </div>
+          <div class="stat-card kpi-card">
+            <div class="stat-label">지각</div>
+            <div class="stat-value" id="todayLate">-</div>
+            <div class="stat-delta" id="todayLateSub"></div>
+          </div>
+          <div class="stat-card kpi-card kpi-clickable" onclick="openLongTermAbsentees()">
+            <div class="stat-label">장기 미출근</div>
+            <div class="stat-value" id="todayLongTerm">-</div>
+            <div class="stat-delta">최근 5영업일 0회 →</div>
+          </div>
         </div>
-        <div class="stat-card">
-          <div class="stat-value" id="todayNormal">-</div>
-          <div class="stat-label">정상</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="todayLate">-</div>
-          <div class="stat-label">지각</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="todayReturn">-</div>
-          <div class="stat-label">귀소</div>
+        <div class="trend-card">
+          <div class="trend-header">
+            <span class="trend-title">최근 14영업일 출근 추세</span>
+            <span class="trend-meta" id="trendMeta"></span>
+          </div>
+          <div class="trend-chart" id="trendChart"></div>
+          <div class="trend-axis" id="trendAxis"></div>
         </div>
       </div>
+
+      <!-- 호환용 (loadToday가 쓰는 id 유지) -->
+      <input type="hidden" id="todayNormal" value="-">
+      <input type="hidden" id="todayReturn" value="-">
 
       <div style="margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
         <div style="display:flex; align-items:center; gap:8px;">
@@ -274,7 +292,39 @@
   </div><!-- /adminMain -->
   </div>
 
-  <script src="js/config.js?v=3.2"></script>
-  <script src="js/admin.js?v=3.2"></script>
+  <!-- 결근/장기 미출근 모달 -->
+  <div class="modal-overlay" id="absenteeModal" style="display:none;" onclick="closeAbsenteeModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="absenteeModalTitle">결근 명단</h3>
+        <button class="modal-close" onclick="closeAbsenteeModal()">×</button>
+      </div>
+      <p id="absenteeModalSubtitle" class="modal-subtitle"></p>
+      <div id="absenteeModalList" class="absentee-list"></div>
+    </div>
+  </div>
+
+  <!-- 메모 등록 모달 -->
+  <div class="modal-overlay" id="memoModal" style="display:none;" onclick="closeMemoModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3>휴가 · 외근 등록</h3>
+        <button class="modal-close" onclick="closeMemoModal()">×</button>
+      </div>
+      <p class="modal-subtitle"><span id="memoEmpName"></span> · 사번 <span id="memoEmpId"></span></p>
+      <div class="memo-tag-row">
+        <button class="memo-tag" data-tag="휴가" onclick="selectMemoTag(this)">휴가</button>
+        <button class="memo-tag" data-tag="외근" onclick="selectMemoTag(this)">외근</button>
+        <button class="memo-tag" data-tag="교육" onclick="selectMemoTag(this)">교육</button>
+        <button class="memo-tag" data-tag="기타" onclick="selectMemoTag(this)">기타</button>
+      </div>
+      <input type="text" id="memoReason" class="input-field" placeholder="사유 (선택)" style="margin-top:12px; text-align:left; letter-spacing:normal; font-size:14px; padding:12px;">
+      <button class="btn btn-primary btn-block" onclick="submitMemo()" style="margin-top:14px;">등록</button>
+      <p id="memoResult" style="margin-top:10px; font-size:13px;"></p>
+    </div>
+  </div>
+
+  <script src="js/config.js?v=3.4"></script>
+  <script src="js/admin.js?v=3.4"></script>
 </body>
 </html>
