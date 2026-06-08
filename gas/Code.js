@@ -1642,14 +1642,35 @@ function handleGreeting(data) {
   var hour = parseInt(Utilities.formatDate(new Date(), 'Asia/Seoul', 'HH'));
   var weekday = ['일', '월', '화', '수', '목', '금', '토'][new Date(date).getDay()];
 
+  // 상태 분류: 출근 전(QR 스캔만 함, 아직 미출근) / 진행 중(이미 출근 완료, 추가 진입) / 출근 등록 직후 / 기타 이벤트
+  var isPreCheckin = type === '출근 전';
+  var isInProgress = type === '진행 중';
+  var isCheckinNow = type === '출근';
+
   var statusText = '';
-  if (type === '출근') {
+  if (isCheckinNow) {
     if (status === 'normal') statusText = '정시 출근';
     else if (status === 'late') statusText = '지각';
     else if (status === 'working') statusText = '늦은 출근';
   }
 
   var insight = empId ? buildPersonalInsight(empId, date) : null;
+
+  // 이벤트 상태 한국어 설명 (AI가 명확히 이해하도록)
+  var eventStateDesc = '';
+  if (isPreCheckin) {
+    eventStateDesc = '아직 출근 등록 안 함. QR을 스캔해서 페이지에 막 들어온 상태. 곧 출근 버튼을 누를 예정.';
+  } else if (isInProgress) {
+    eventStateDesc = '이미 오늘 출근 완료한 상태. 다시 페이지에 들어옴.';
+  } else if (isCheckinNow) {
+    eventStateDesc = '방금 출근 버튼 눌러서 등록 완료. ' + time + '에 도착함.';
+  } else if (type === '귀소') {
+    eventStateDesc = '방금 귀소(외근 후 복귀) 등록 완료. ' + time + '에 복귀.';
+  } else if (type === '학습회') {
+    eventStateDesc = '방금 학습회 출석 등록 완료. ' + time + '.';
+  } else if (type === '퇴근') {
+    eventStateDesc = '방금 퇴근 등록 완료. ' + time + '에 마감.';
+  }
 
   var systemPrompt = 'You are a Korean morning briefing assistant for insurance FPs. ' +
     'Write ONE single Korean sentence (max 50 chars) for the FP. ' +
@@ -1658,19 +1679,28 @@ function handleGreeting(data) {
     'NEVER use clichés (화이팅·파이팅·수고·아자). No emojis. No exclamation overload. ' +
     'NEVER say the word "지각" — describe the time fact instead. ' +
     '\n\n' +
-    'Pick the SINGLE most striking data point. Priority order:\n' +
+    'CRITICAL — Match the eventState exactly:\n' +
+    '- "출근 전" (pre-checkin): The FP just opened the page and has NOT yet pressed the checkin button. NEVER claim they arrived, NEVER mention today\'s arrival time, NEVER compare today vs usual arrival time. Use only past data (어제까지 누적·streak·평소 평균). Tone: pre-day greeting ("오늘도 시작해볼게요", "어제까지 N일 연속이세요").\n' +
+    '- "진행 중" (already checked in): They came back to the page after already checking in. Acknowledge they\'re mid-day. Use streak/누적/오늘의 흐름.\n' +
+    '- "출근" (just checked in): They JUST pressed the button. NOW you can describe arrival time, compare vs usual, etc.\n' +
+    '- "귀소/학습회/퇴근": Describe that specific event just being logged.\n' +
+    '\n' +
+    'Pick the SINGLE most striking data point that fits the eventState. Priority:\n' +
     '1) 신규 등록 (출근 이력 부족) — 등록 사실 + 다음부터의 편의 안내\n' +
-    '2) 지각 (status=late/working) — 도착 시각 사실 + 오후 행동 제안 (지각이라는 단어 금지)\n' +
-    '3) 평소 대비 큰 시간 변화 (±15분 이상) — 차이 짚어주기\n' +
+    '2) (출근 only) 지각 — 도착 시각 사실 + 오후 행동 제안 (지각이라는 단어 금지)\n' +
+    '3) (출근 only) 평소 대비 큰 시간 변화 (±15분 이상) — 차이 짚어주기\n' +
     '4) 의미 있는 누적 (3일+ 연속, 지난주 5/5, 이번달 10일+ 등)\n' +
-    '5) 그 외 — 짧고 단정한 도착 인사 + 다음 행동 한 마디\n' +
+    '5) 그 외 — eventState에 맞는 짧고 단정한 인사 + 다음 행동 한 마디\n' +
     '\n' +
     'Tone examples — match this style, do NOT copy verbatim:\n' +
+    '- 출근 전 (이력 풍부): "안효성님, 어제까지 3일 연속 출근 중이세요. 오늘도 이어가시죠"\n' +
+    '- 출근 전 (이력 빈약): "안효성님, 오늘도 좋은 아침이에요"\n' +
+    '- 진행 중: "안효성님, 이번달 누적 5일째 진행 중이세요"\n' +
     '- 신규: "안효성님, 등록 완료. QR 찍고 출근 버튼 한 번이면 끝"\n' +
-    '- 지각: "김민수님, 09:12 도착. 오후 일정 한 번 더 확인하고 시작하시죠"\n' +
-    '- 평소보다 일찍: "박지영님, 평소보다 13분 일찍 도착하셨네요"\n' +
-    '- 연속 출근: "정태영님, 3주째 매주 5일 출근. 이대로면 이번달 만근이에요"\n' +
-    '- 평범한 출근: "이수진님, 오늘 정시 도착. 오전 미팅부터 차분히 가시죠"\n' +
+    '- 지각 (출근 직후): "김민수님, 09:12 도착. 오후 일정 한 번 더 확인하고 시작하시죠"\n' +
+    '- 평소보다 일찍 (출근 직후): "박지영님, 평소보다 13분 일찍 도착하셨네요"\n' +
+    '- 연속 출근 (출근 직후): "정태영님, 3주째 매주 5일 출근. 이대로면 이번달 만근이에요"\n' +
+    '- 평범한 출근 (출근 직후): "이수진님, 오늘 정시 도착. 오전 미팅부터 차분히 가시죠"\n' +
     '- 귀소: "최영호님, 복귀 확인. 마감 전 한 콜만 더 챙기시죠"\n' +
     '- 학습회: "조서연님, 학습회 등록. 끝나고 본인 케이스 하나 정리해두세요"\n' +
     '- 퇴근: "윤도현님, 오늘 마감. 내일 일정만 가볍게 훑고 닫으시죠"\n' +
@@ -1678,8 +1708,11 @@ function handleGreeting(data) {
     'Output ONLY the greeting sentence — no quotes, no preamble, no markdown.';
 
   var userPrompt = 'FP: ' + empName + '\n' +
-    '이벤트: ' + type + '\n' +
-    '시각: ' + time + ' (' + weekday + '요일, 현재 ' + hour + '시)\n' +
+    'eventState: ' + type + '\n' +
+    '상태 설명: ' + eventStateDesc + '\n' +
+    (isPreCheckin || isInProgress
+      ? '현재 시각: ' + time + ' (' + weekday + '요일)\n'
+      : '이벤트 시각: ' + time + ' (' + weekday + '요일)\n') +
     (statusText ? '오늘 출근 상태: ' + statusText + '\n' : '');
 
   if (insight) {
@@ -1687,17 +1720,25 @@ function handleGreeting(data) {
     if (insight.isNewbie) {
       userPrompt += '- 신규 등록 (출근 이력 부족, 첫 등록일 ' + (insight.firstDate || '오늘') + ')\n';
     } else {
-      if (insight.todayCheckin && insight.usualAvgTime && insight.diffFromUsual !== null) {
-        var dStr = insight.diffFromUsual > 0 ? '+' + insight.diffFromUsual : insight.diffFromUsual;
-        userPrompt += '- 오늘 ' + insight.todayCheckin + ' 도착 / 평소 평균 ' + insight.usualAvgTime + ' (' + dStr + '분, 표본 ' + insight.sampleSize + '일)\n';
-      } else if (insight.todayCheckin) {
-        userPrompt += '- 오늘 ' + insight.todayCheckin + ' 도착\n';
+      // 오늘 도착 시각·평소 대비 차이는 "이미 출근한 경우"에만 (출근 전엔 절대 금지)
+      if (!isPreCheckin) {
+        if (insight.todayCheckin && insight.usualAvgTime && insight.diffFromUsual !== null) {
+          var dStr = insight.diffFromUsual > 0 ? '+' + insight.diffFromUsual : insight.diffFromUsual;
+          userPrompt += '- 오늘 ' + insight.todayCheckin + ' 도착 / 평소 평균 ' + insight.usualAvgTime + ' (' + dStr + '분, 표본 ' + insight.sampleSize + '일)\n';
+        } else if (insight.todayCheckin) {
+          userPrompt += '- 오늘 ' + insight.todayCheckin + ' 도착\n';
+        }
+        if (insight.weekdayAvgTime && insight.diffFromWeekday !== null) {
+          var dwStr = insight.diffFromWeekday > 0 ? '+' + insight.diffFromWeekday : insight.diffFromWeekday;
+          userPrompt += '- 같은 ' + weekday + '요일 평소 평균 ' + insight.weekdayAvgTime + ' (' + dwStr + '분)\n';
+        }
+      } else {
+        // 출근 전: 평소 평균 시각은 "참고용"으로만, 오늘 대비 비교는 금지
+        if (insight.usualAvgTime) {
+          userPrompt += '- (참고) 이 사람 평소 평균 출근 시각 ' + insight.usualAvgTime + ' — 단, 오늘 아직 출근 안 했으므로 비교 멘트 금지\n';
+        }
       }
-      if (insight.weekdayAvgTime && insight.diffFromWeekday !== null) {
-        var dwStr = insight.diffFromWeekday > 0 ? '+' + insight.diffFromWeekday : insight.diffFromWeekday;
-        userPrompt += '- 같은 ' + weekday + '요일 평소 평균 ' + insight.weekdayAvgTime + ' (' + dwStr + '분)\n';
-      }
-      if (insight.streak > 0) userPrompt += '- 현재 ' + insight.streak + '일 연속 출근\n';
+      if (insight.streak > 0) userPrompt += '- ' + (isPreCheckin ? '어제까지 ' : '현재 ') + insight.streak + '일 연속 출근\n';
       if (insight.monthDays > 0) userPrompt += '- 이번달 누적 ' + insight.monthDays + '일 출근\n';
       userPrompt += '- 지난주 ' + insight.lastWeekDays + '/5 출근\n';
       if (insight.thirtyDayRate !== null) {
@@ -1706,7 +1747,7 @@ function handleGreeting(data) {
     }
   }
 
-  userPrompt += '\n위 데이터 중 가장 두드러진 1개를 골라 한 문장 인사 생성.';
+  userPrompt += '\nEventState를 반드시 지키면서, 위 데이터 중 가장 두드러진 1개를 골라 한 문장 인사 생성.';
 
   var result = callClaude(systemPrompt, userPrompt, 150);
   if (result.error) {
