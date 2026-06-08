@@ -71,13 +71,18 @@ async function loadDemoEmp() {
     document.getElementById('tokenEmpName').textContent = _demoEmpName;
     document.getElementById('tokenEmpId').textContent = '사번 ' + empId;
 
+    // placeholder 숨김
+    var placeholder = document.getElementById('demoPlaceholder');
+    if (placeholder) placeholder.style.display = 'none';
+
     // success 화면 숨기고 토큰 화면 표시
     var successEl = document.getElementById('successSection');
     successEl.style.display = 'none';
     successEl.classList.remove('show');
     document.getElementById('tokenSection').style.display = 'block';
-    var spacer = document.getElementById('demoSpacer');
-    if (spacer) spacer.style.display = 'block';
+
+    // 시연 화면을 page top으로 스크롤 (촬영 안정화)
+    setTimeout(function () { window.scrollTo({ top: 0, behavior: 'smooth' }); }, 100);
 
     // 헬퍼 호출 — checkin.js의 함수들 그대로 사용
     // 첫 로드는 'real' 시나리오로 미리보기 (today.checkin=false 강제 → 출근 버튼 활성)

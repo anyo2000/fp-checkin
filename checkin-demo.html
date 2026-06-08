@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FP 모닝 브리핑 — 데모</title>
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
-  <link rel="stylesheet" href="css/style.css?v=4.3">
+  <link rel="stylesheet" href="css/style.css?v=4.4">
   <style>
     .demo-banner {
       background: #FEF3F2;
@@ -25,27 +25,29 @@
       border: 1px solid var(--color-border);
       border-radius: var(--radius);
       padding: 14px 16px;
-      margin-bottom: 80px;
       box-shadow: var(--shadow-sm);
     }
-    /* 데모 컨트롤과 토큰 화면 사이 추가 구분선 — 촬영 여백 */
-    .demo-spacer {
-      height: 0;
-      border-top: 1px dashed var(--color-border);
-      margin: 0 0 24px 0;
-      position: relative;
+    /* 시연 화면 placeholder (사번 불러오기 전) */
+    .demo-placeholder {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--color-text-muted);
+      font-size: 13px;
+      background: white;
+      border: 2px dashed var(--color-border);
+      border-radius: var(--radius);
+      margin-bottom: 60px;
+      line-height: 1.7;
     }
-    .demo-spacer::before {
-      content: '↓ 시연 화면';
-      position: absolute;
-      top: -10px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: var(--color-bg);
-      padding: 0 12px;
+    /* 시연 화면과 컨트롤 사이 구분 */
+    .demo-spacer-bottom {
+      text-align: center;
       font-size: 11px;
       color: var(--color-text-muted);
-      letter-spacing: 1px;
+      letter-spacing: 2px;
+      margin: 60px 0 16px;
+      padding-top: 16px;
+      border-top: 1px dashed var(--color-border);
     }
     .demo-controls h3 {
       font-size: 13px;
@@ -194,38 +196,10 @@
 
     <main class="checkin-main">
 
-      <!-- 데모 컨트롤 -->
-      <div class="demo-controls">
-        <h3>1) 시연할 사번 + 시각</h3>
-        <div class="demo-empid-row">
-          <input type="tel" id="demoEmpId" placeholder="0000000" maxlength="10" inputmode="numeric">
-          <button id="demoLoadBtn" onclick="loadDemoEmp()">불러오기</button>
-        </div>
-        <div class="demo-time-row">
-          <label class="demo-time-label">시연 시각</label>
-          <input type="time" id="demoTime" value="08:32">
-          <span class="demo-time-hint">불러오기 누를 때 적용</span>
-        </div>
-        <div class="demo-empinfo" id="demoEmpInfo" style="display:none;"></div>
-
-        <h3 style="margin-top:14px;">2) 시나리오 강제 (출근 누를 때 적용)</h3>
-        <div class="scenario-indicator" id="scenarioIndicator">시나리오: 그대로 (출근해도 마일스톤 없음)</div>
-        <div class="demo-scenarios">
-          <button class="demo-scenario active" data-sc="real" onclick="setScenario(this)">그대로 (진짜 상태)</button>
-          <button class="demo-scenario" data-sc="month5" onclick="setScenario(this)">이번달 5일째 마일스톤</button>
-          <button class="demo-scenario" data-sc="month10" onclick="setScenario(this)">이번달 10일째</button>
-          <button class="demo-scenario" data-sc="month20huge" onclick="setScenario(this)">이번달 20일째 HUGE</button>
-          <button class="demo-scenario" data-sc="streak3" onclick="setScenario(this)">연속 3일</button>
-          <button class="demo-scenario" data-sc="streak7" onclick="setScenario(this)">연속 7일</button>
-          <button class="demo-scenario" data-sc="streak30huge" onclick="setScenario(this)">연속 30일 HUGE</button>
-          <button class="demo-scenario" data-sc="firstOfMonth" onclick="setScenario(this)">이번달 첫 출근</button>
-          <button class="demo-scenario" data-sc="late" onclick="setScenario(this)">지각 (09:15)</button>
-          <button class="demo-scenario" data-sc="newbie" onclick="setScenario(this)">신규 등록</button>
-        </div>
+      <!-- 시연 화면 placeholder (사번 불러오기 전) -->
+      <div class="demo-placeholder" id="demoPlaceholder">
+        아래 컨트롤에서 사번을 불러오면<br>여기 시연 화면이 나타납니다
       </div>
-
-      <!-- 데모 컨트롤과 시연 화면 사이 구분 -->
-      <div class="demo-spacer" id="demoSpacer" style="display:none;"></div>
 
       <!-- 토큰 모드 동일 화면 (사번 로드 후 표시) -->
       <section id="tokenSection" class="screen" style="display:none;">
@@ -330,13 +304,46 @@
         </div>
       </section>
 
+      <!-- 시연 화면과 컨트롤 사이 구분 -->
+      <div class="demo-spacer-bottom">↓ 시연 컨트롤</div>
+
+      <!-- 데모 컨트롤 (아래로 이동) -->
+      <div class="demo-controls">
+        <h3>1) 시연할 사번 + 시각</h3>
+        <div class="demo-empid-row">
+          <input type="tel" id="demoEmpId" placeholder="0000000" maxlength="10" inputmode="numeric">
+          <button id="demoLoadBtn" onclick="loadDemoEmp()">불러오기</button>
+        </div>
+        <div class="demo-time-row">
+          <label class="demo-time-label">시연 시각</label>
+          <input type="time" id="demoTime" value="08:32">
+          <span class="demo-time-hint">불러오기 누를 때 적용</span>
+        </div>
+        <div class="demo-empinfo" id="demoEmpInfo" style="display:none;"></div>
+
+        <h3 style="margin-top:14px;">2) 시나리오 강제 (출근 누를 때 적용)</h3>
+        <div class="scenario-indicator" id="scenarioIndicator">시나리오: 그대로 (출근해도 마일스톤 없음)</div>
+        <div class="demo-scenarios">
+          <button class="demo-scenario active" data-sc="real" onclick="setScenario(this)">그대로 (진짜 상태)</button>
+          <button class="demo-scenario" data-sc="month5" onclick="setScenario(this)">이번달 5일째 마일스톤</button>
+          <button class="demo-scenario" data-sc="month10" onclick="setScenario(this)">이번달 10일째</button>
+          <button class="demo-scenario" data-sc="month20huge" onclick="setScenario(this)">이번달 20일째 HUGE</button>
+          <button class="demo-scenario" data-sc="streak3" onclick="setScenario(this)">연속 3일</button>
+          <button class="demo-scenario" data-sc="streak7" onclick="setScenario(this)">연속 7일</button>
+          <button class="demo-scenario" data-sc="streak30huge" onclick="setScenario(this)">연속 30일 HUGE</button>
+          <button class="demo-scenario" data-sc="firstOfMonth" onclick="setScenario(this)">이번달 첫 출근</button>
+          <button class="demo-scenario" data-sc="late" onclick="setScenario(this)">지각 (09:15)</button>
+          <button class="demo-scenario" data-sc="newbie" onclick="setScenario(this)">신규 등록</button>
+        </div>
+      </div>
+
     </main>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
   <script>window.__SKIP_AUTO_INIT = true;</script>
-  <script src="js/config.js?v=4.3"></script>
-  <script src="js/checkin.js?v=4.3"></script>
-  <script src="js/checkin-demo.js?v=4.3"></script>
+  <script src="js/config.js?v=4.4"></script>
+  <script src="js/checkin.js?v=4.4"></script>
+  <script src="js/checkin-demo.js?v=4.4"></script>
 </body>
 </html>
