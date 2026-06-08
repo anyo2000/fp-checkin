@@ -337,14 +337,17 @@ async function loadBriefing() {
 }
 
 function renderBriefingCard(opts) {
-  var meta = (ADMIN_NODE ? ADMIN_NODE.name : '') + ' · ' + shortDate(opts.date || '');
+  var now = new Date();
+  var hh = String(now.getHours()).padStart(2, '0');
+  var mm = String(now.getMinutes()).padStart(2, '0');
+  var meta = shortDate(opts.date || '') + ' · ' + hh + ':' + mm + ' 기준';
   var body;
   if (opts.loading) {
     body = '<div class="ai-briefing-body ai-briefing-loading">현황을 정리하는 중<span class="dots"><i>.</i><i>.</i><i>.</i></span></div>';
   } else if (opts.error) {
     body = '<div class="ai-briefing-body ai-briefing-loading">브리핑을 일시적으로 불러올 수 없습니다.</div>';
   } else {
-    body = '<div class="ai-briefing-body">' + escapeHtml(opts.briefing).replace(/\n/g, '<br>') + '</div>';
+    body = '<div class="ai-briefing-body">' + formatBriefingHtml(opts.briefing) + '</div>';
   }
 
   var pod = '';
@@ -393,23 +396,39 @@ function renderTrendChart(series) {
   var n = series.length;
   var step = (w - padX * 2) / Math.max(1, n - 1);
 
+  // 공휴일 추정일은 평균에서 제외
+  var validSeries = series.filter(function (s) { return !s.isHoliday; });
+  var avgBase = validSeries.length > 0
+    ? validSeries.reduce(function (a, b) { return a + b.count; }, 0) / validSeries.length
+    : 0;
+
   var points = '';
   var dots = '';
   var labels = '';
+  var prevValid = false;
   for (var j = 0; j < n; j++) {
     var x = padX + j * step;
     var y = h - padY - ((series[j].count / max) * (h - padY * 2 - 12));
-    points += (j === 0 ? 'M' : 'L') + x + ',' + y + ' ';
-    var color = series[j].isToday ? '#FF6600' : '#001E4E';
-    var r = series[j].isToday ? 6 : 4;
-    dots += '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="' + color + '" />';
-    var labelColor = series[j].isToday ? '#FF6600' : '#475569';
-    var labelWeight = series[j].isToday ? '800' : '700';
-    labels += '<text x="' + x + '" y="' + (y - 12) + '" text-anchor="middle" font-size="13" font-weight="' + labelWeight + '" fill="' + labelColor + '">' + series[j].count + '</text>';
+    if (series[j].isHoliday) {
+      // 라인 끊기 (휴일 점은 그리지 않고 회색 X)
+      points += 'M' + x + ',' + y + ' ';
+      prevValid = false;
+      dots += '<circle cx="' + x + '" cy="' + y + '" r="3" fill="#CBD5E1" />';
+      labels += '<text x="' + x + '" y="' + (y - 10) + '" text-anchor="middle" font-size="11" font-weight="600" fill="#94A3B8">휴일</text>';
+    } else {
+      points += (prevValid ? 'L' : 'M') + x + ',' + y + ' ';
+      prevValid = true;
+      var color = series[j].isToday ? '#FF6600' : '#001E4E';
+      var r = series[j].isToday ? 6 : 4;
+      dots += '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="' + color + '" />';
+      var labelColor = series[j].isToday ? '#FF6600' : '#475569';
+      var labelWeight = series[j].isToday ? '800' : '700';
+      labels += '<text x="' + x + '" y="' + (y - 12) + '" text-anchor="middle" font-size="13" font-weight="' + labelWeight + '" fill="' + labelColor + '">' + series[j].count + '</text>';
+    }
   }
 
-  // 평균선
-  var avg = series.reduce(function (a, b) { return a + b.count; }, 0) / n;
+  // 평균선 (공휴일 제외)
+  var avg = avgBase;
   var avgY = h - padY - ((avg / max) * (h - padY * 2 - 12));
 
   chart.innerHTML = '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="width:100%; height:100%;">' +
@@ -420,7 +439,7 @@ function renderTrendChart(series) {
     '</svg>';
 
   axis.innerHTML = series.map(function (s) {
-    var cls = s.isToday ? 'axis-today' : '';
+    var cls = s.isToday ? 'axis-today' : (s.isHoliday ? 'axis-holiday' : '');
     return '<span class="' + cls + '">' + s.label + '</span>';
   }).join('');
 }
@@ -437,6 +456,18 @@ function shortDate(s) {
   var m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (m) return parseInt(m[2]) + '/' + parseInt(m[3]);
   return s;
+}
+
+// AI 브리핑 텍스트 → 문장 줄바꿈 + 숫자 강조
+function formatBriefingHtml(text) {
+  if (!text) return '';
+  var safe = escapeHtml(text);
+  // \n 우선 처리
+  safe = safe.replace(/\n+/g, '<br>');
+  // 마침표·물음표·느낌표 뒤 공백을 줄바꿈으로 (한국어 문장 분리)
+  // 단 "1.", "2." 같은 번호 매김은 보존 (앞이 숫자 아닌 경우만)
+  safe = safe.replace(/([가-힣\w%)\]])([.!?])\s+(?=[가-힣A-Z])/g, '$1$2<br>');
+  return safe;
 }
 
 // ===== 결근/장기 미출근 모달 =====

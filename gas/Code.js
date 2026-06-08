@@ -352,6 +352,62 @@ function getLogsForMonth(month) {
 // ========== 권한 인증 (GAS 에디터에서 1번만 실행) ==========
 // 모든 사용 권한(스프레드시트·UrlFetch·메일·트리거·Properties)을 한 번에 트리거.
 // 첫 실행 시 권한 승인 팝업이 뜨고, 한 번 승인되면 deployed 요청 전부 정상 동작.
+// Claude API 직접 호출 테스트 — GAS 에디터에서 실행하면 응답이 로그에 찍힘
+function testClaudeAPI() {
+  var apiKey = PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY');
+  Logger.log('API key length: ' + (apiKey ? apiKey.length : 0));
+  Logger.log('API key prefix: ' + (apiKey ? apiKey.slice(0, 10) + '...' : 'EMPTY'));
+  if (!apiKey) return 'ANTHROPIC_API_KEY 미설정';
+
+  var payload = {
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 100,
+    messages: [{ role: 'user', content: '안녕하세요. 한 줄로 인사해주세요.' }],
+  };
+
+  var options = {
+    method: 'post',
+    contentType: 'application/json',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true,
+  };
+
+  try {
+    var res = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', options);
+    var code = res.getResponseCode();
+    var body = res.getContentText();
+    Logger.log('HTTP status: ' + code);
+    Logger.log('Response body: ' + body);
+    return 'status=' + code + ' body=' + body.slice(0, 300);
+  } catch (err) {
+    Logger.log('Exception: ' + err.message);
+    return 'Exception: ' + err.message;
+  }
+}
+
+// 권한 상태 진단 + 권한 부여 URL 반환
+// 실행 후 로그에 나오는 URL을 새 탭에 열면 권한 prompt가 강제로 뜸
+function diagnoseAuth() {
+  var info = ScriptApp.getAuthorizationInfo(ScriptApp.AuthMode.FULL);
+  var status = info.getAuthorizationStatus();
+  Logger.log('권한 상태: ' + status);
+  if (status === ScriptApp.AuthorizationStatus.REQUIRED) {
+    var url = info.getAuthorizationUrl();
+    Logger.log('=========================================');
+    Logger.log('이 URL을 새 탭에 열어서 권한을 승인하세요:');
+    Logger.log(url);
+    Logger.log('=========================================');
+    return url;
+  } else {
+    Logger.log('권한이 이미 부여되어 있습니다.');
+    return 'OK';
+  }
+}
+
 function authorizeAll() {
   var log = [];
   try { SpreadsheetApp.getActiveSpreadsheet().getName(); log.push('Sheets OK'); }
@@ -1432,7 +1488,7 @@ function buildDailyInsight(code, date) {
     if (todayLog['학습회']) todayLearning++;
   }
 
-  // trendSeries — 14영업일 (오래된 순)
+  // trendSeries — 14영업일 (오래된 순). 출근 0명인 영업일은 공휴일로 추정해서 마크
   var trendSeries = [];
   for (var bd = bizDays14.length - 1; bd >= 0; bd--) {
     var d2 = bizDays14[bd];
@@ -1441,16 +1497,18 @@ function buildDailyInsight(code, date) {
       if (empData[empIds[k2]].days[d2] && empData[empIds[k2]].days[d2]['출근']) count++;
     }
     var dt = new Date(d2);
+    var isHolidayGuess = count === 0 && d2 !== date; // 오늘은 오전 호출 시 0일 수 있어 제외
     trendSeries.push({
       date: d2,
       label: (dt.getMonth() + 1) + '/' + dt.getDate(),
       weekday: ['일', '월', '화', '수', '목', '금', '토'][dt.getDay()],
       count: count,
       isToday: d2 === date,
+      isHoliday: isHolidayGuess,
     });
   }
 
-  // 평소 평균 (최근 14영업일 — 오늘 제외) - AI 프롬프트용
+  // 평소 평균 (최근 14영업일 — 오늘·공휴일 추정일 제외) - AI 프롬프트용
   var pastCounts = [];
   for (var bd2 = 0; bd2 < bizDays14.length; bd2++) {
     if (bizDays14[bd2] === date) continue;
@@ -1458,6 +1516,7 @@ function buildDailyInsight(code, date) {
     for (var k4 = 0; k4 < empIds.length; k4++) {
       if (empData[empIds[k4]].days[bizDays14[bd2]] && empData[empIds[k4]].days[bizDays14[bd2]]['출근']) c2++;
     }
+    if (c2 === 0) continue; // 공휴일 추정 — 평균에서 제외
     pastCounts.push(c2);
   }
   var avgCheckin = pastCounts.length > 0
@@ -1497,8 +1556,10 @@ function buildDailyInsight(code, date) {
     var lmDateObj = new Date(lmDateKeys[lmd2]);
     var lmWd = lmDateObj.getDay();
     if (lmWd < 1 || lmWd > 5) continue;
+    var lmDayCount = Object.keys(lastMonthDayCounts[lmDateKeys[lmd2]]).length;
+    if (lmDayCount === 0) continue; // 공휴일 추정 — 평균에서 제외
     lmBizDays++;
-    lmTotalCheckin += Object.keys(lastMonthDayCounts[lmDateKeys[lmd2]]).length;
+    lmTotalCheckin += lmDayCount;
   }
   var lastMonthAvg = lmBizDays > 0 ? Math.round(lmTotalCheckin / lmBizDays) : avgCheckin;
 
@@ -1517,6 +1578,7 @@ function buildDailyInsight(code, date) {
     for (var k3 = 0; k3 < empIds.length; k3++) {
       if (empData[empIds[k3]].days[pastStr] && empData[empIds[k3]].days[pastStr]['출근']) wc++;
     }
+    if (wc === 0) continue; // 공휴일 추정 제외
     weekdayCounts.push(wc);
   }
   var weekdayAvg = weekdayCounts.length > 0
@@ -1701,6 +1763,7 @@ function handleBriefing(data) {
   var systemPrompt = 'You are a sharp morning briefing assistant for a Korean insurance branch manager (지점장). ' +
     'Given today\'s attendance insight (anomalies, shifts, absentees), write a concise Korean briefing (3-4 short sentences, max 220 chars). ' +
     'Structure: (1) Headline number with delta vs baseline. (2) The single most important anomaly (unusual absence OR significant time shift). (3) Concrete action item ("○○님 확인 권장" 같은 행동 제안). ' +
+    'Each sentence on its own line (separate with \\n newlines for readability). Do not write the whole briefing as one long paragraph. ' +
     'Tone: confident chief-of-staff briefing — not corporate fluff. Never use clichés like "화이팅", "수고". No emojis. ' +
     'If everything is normal, say so briefly without inventing concerns. ' +
     'Output ONLY the briefing text.';

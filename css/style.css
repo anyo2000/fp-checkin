@@ -1070,6 +1070,11 @@ body {
   font-weight: 800;
 }
 
+.trend-axis .axis-holiday {
+  color: var(--color-text-muted);
+  opacity: 0.6;
+}
+
 /* "주목할 FP" 영역 — AI 브리핑 카드 내 */
 .person-of-day {
   display: flex;
