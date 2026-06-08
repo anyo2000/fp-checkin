@@ -466,6 +466,137 @@ function archiveOldMonths() {
   }
 }
 
+// 출석로그의 branch 컬럼이 어떤 값으로 박히는지 확인 + 지점 vs 사업소 코드로 호출 비교
+function diagnoseJungbal() {
+  Logger.log('=== 출석로그의 branch 컬럼 unique 값 (정발산 관련) ===');
+  var src = getLogSheet();
+  var arch = getArchiveSheet(false);
+  var allRows = [];
+  if (src) {
+    var d1 = src.getDataRange().getValues();
+    for (var i = 1; i < d1.length; i++) allRows.push(d1[i]);
+  }
+  if (arch) {
+    var d2 = arch.getDataRange().getValues();
+    for (var j = 1; j < d2.length; j++) allRows.push(d2[j]);
+  }
+  var jungbalBranches = {};
+  for (var k = 0; k < allRows.length; k++) {
+    var b = String(allRows[k][3] || '').trim();
+    if (b.indexOf('jungbalsan') >= 0 || b.indexOf('jungba') >= 0) {
+      jungbalBranches[b] = (jungbalBranches[b] || 0) + 1;
+    }
+  }
+  for (var key in jungbalBranches) {
+    Logger.log('• ' + key + ' → ' + jungbalBranches[key] + ' rows');
+  }
+
+  Logger.log('\n=== 지점 코드(sfp.sudo1.jungbalsan)로 buildDailyInsight ===');
+  var i1 = buildDailyInsight('sfp.sudo1.jungbalsan', todayString());
+  Logger.log('today.checkin: ' + i1.today.checkin + ' / late: ' + i1.today.late);
+  Logger.log('trendSeries: ' + i1.trendSeries.map(function(t){return t.count;}).join(','));
+  Logger.log('absentees.unusual: ' + i1.absentees.unusual.length);
+  Logger.log('absentees.longTerm: ' + i1.absentees.longTerm.length);
+  Logger.log('baseline.avgCheckin: ' + i1.baseline.avgCheckin);
+}
+
+// 정발산 지점 코드 찾기 + 그 코드로 buildDailyInsight 호출
+function diagnoseBranchByKeyword(keyword) {
+  keyword = keyword || '정발산';
+  Logger.log('=== "' + keyword + '" 포함 조직 검색 ===');
+  var orgs = getOrgData();
+  var matches = [];
+  for (var i = 0; i < orgs.length; i++) {
+    if (orgs[i].name && orgs[i].name.indexOf(keyword) >= 0) {
+      Logger.log('• ' + orgs[i].code + ' / ' + orgs[i].name + ' / level=' + orgs[i].level);
+      matches.push(orgs[i]);
+    }
+  }
+  if (matches.length === 0) {
+    Logger.log('매칭 없음. 다른 키워드 시도.');
+    return;
+  }
+  // 가장 깊은 노드(office 또는 branch)로 buildDailyInsight 실행
+  var target = matches[matches.length - 1];
+  Logger.log('=== buildDailyInsight(' + target.code + ') 실행 ===');
+  try {
+    var insight = buildDailyInsight(target.code, todayString());
+    Logger.log('branchName: ' + insight.branchName);
+    Logger.log('today.checkin: ' + insight.today.checkin);
+    Logger.log('today.late: ' + insight.today.late);
+    Logger.log('trendSeries 개수: ' + insight.trendSeries.length + ' (값: ' + insight.trendSeries.map(function(t){return t.count;}).join(',') + ')');
+    Logger.log('absentees.unusual: ' + insight.absentees.unusual.length);
+    Logger.log('absentees.longTerm: ' + insight.absentees.longTerm.length);
+    Logger.log('baseline.avgCheckin: ' + insight.baseline.avgCheckin);
+    Logger.log('baseline.lastMonthAvg: ' + insight.baseline.lastMonthAvg);
+    Logger.log('memos: ' + insight.memos.length);
+  } catch (err) {
+    Logger.log('ERROR: ' + err.message + ' / ' + err.stack);
+  }
+}
+
+// 진단 — admin 화면 데이터 안 보일 때 실행. 어디가 막혔는지 한 번에 출력.
+function diagnoseAdminData() {
+  Logger.log('=== 진단 시작 ===');
+  // 1. 시트 상태
+  var src = getLogSheet();
+  var arch = getArchiveSheet(false);
+  Logger.log('본 시트 출석로그: ' + (src ? src.getLastRow() : 'NULL') + ' rows (헤더 포함)');
+  Logger.log('archive 출석로그_archive: ' + (arch ? arch.getLastRow() : 'NOT_FOUND') + ' rows (헤더 포함)');
+
+  // 2. 6월 데이터만 카운트
+  if (src) {
+    var data = src.getDataRange().getValues();
+    var juneCount = 0;
+    for (var i = 1; i < data.length; i++) {
+      var d = toDateString(data[i][6]);
+      if (d && d.slice(0, 7) === '2026-06') juneCount++;
+    }
+    Logger.log('본 시트 6월 데이터: ' + juneCount + ' rows');
+  }
+
+  // 3. getLogsForDateRange 테스트
+  var today = todayString();
+  var thirtyDaysAgo = dateAddDays(today, -45);
+  Logger.log('test range: ' + thirtyDaysAgo + ' ~ ' + today);
+  var range = getLogsForDateRange(thirtyDaysAgo, today);
+  Logger.log('getLogsForDateRange 반환 row 수: ' + range.length);
+
+  // 4. buildDailyInsight 호출 (정발산SFP지점 코드로)
+  var testCode = 'sfp.sudo1.jungba.jungbal';
+  try {
+    var insight = buildDailyInsight(testCode, today);
+    Logger.log('=== buildDailyInsight 결과 ===');
+    Logger.log('branchName: ' + insight.branchName);
+    Logger.log('today.checkin: ' + insight.today.checkin);
+    Logger.log('trendSeries 개수: ' + insight.trendSeries.length);
+    Logger.log('absentees.unusual: ' + insight.absentees.unusual.length);
+    Logger.log('absentees.longTerm: ' + insight.absentees.longTerm.length);
+    Logger.log('baseline.avgCheckin: ' + insight.baseline.avgCheckin);
+    Logger.log('baseline.lastMonthAvg: ' + insight.baseline.lastMonthAvg);
+  } catch (err) {
+    Logger.log('buildDailyInsight ERROR: ' + err.message + ' / stack: ' + err.stack);
+  }
+
+  // 5. Claude API 키 존재 확인
+  var apiKey = PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY');
+  Logger.log('ANTHROPIC_API_KEY 존재: ' + (apiKey ? 'YES (length ' + apiKey.length + ')' : 'NO'));
+
+  Logger.log('=== 진단 끝 ===');
+}
+
+// 아카이브 실행 + 결과 로그 — 에디터에서 실행 후 "실행 로그" 패널에서 확인
+function archiveOldMonthsLog() {
+  var result = archiveOldMonths();
+  Logger.log('=== archiveOldMonths 결과 ===');
+  Logger.log(JSON.stringify(result, null, 2));
+  var src = getLogSheet();
+  var arch = getArchiveSheet(false);
+  Logger.log('본 시트 출석로그 현재 row: ' + (src ? src.getLastRow() : 0) + ' (헤더 포함)');
+  Logger.log('archive 시트 현재 row: ' + (arch ? arch.getLastRow() : 0) + ' (헤더 포함)');
+  return result;
+}
+
 // 매월 1일 03:00 자동 아카이브 트리거 등록 (GAS 에디터에서 한 번 수동 실행)
 function setupMonthlyArchiveTrigger() {
   var triggers = ScriptApp.getProjectTriggers();

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FP 모닝 브리핑 — 데모</title>
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
-  <link rel="stylesheet" href="css/style.css?v=4.4">
+  <link rel="stylesheet" href="css/style.css?v=4.5">
   <style>
     .demo-banner {
       background: #FEF3F2;
@@ -27,6 +27,10 @@
       padding: 14px 16px;
       box-shadow: var(--shadow-sm);
     }
+    /* 시연 화면 영역 — 섹션 전환 시에도 높이 안 바뀌게 고정 */
+    .demo-stage {
+      min-height: 600px;
+    }
     /* 시연 화면 placeholder (사번 불러오기 전) */
     .demo-placeholder {
       text-align: center;
@@ -36,16 +40,15 @@
       background: white;
       border: 2px dashed var(--color-border);
       border-radius: var(--radius);
-      margin-bottom: 60px;
       line-height: 1.7;
     }
-    /* 시연 화면과 컨트롤 사이 구분 */
+    /* 시연 화면과 컨트롤 사이 구분 — viewport 80% 이상 떨어뜨려서 컨트롤이 위로 안 올라오게 */
     .demo-spacer-bottom {
       text-align: center;
       font-size: 11px;
       color: var(--color-text-muted);
       letter-spacing: 2px;
-      margin: 60px 0 16px;
+      margin: 80vh 0 16px;
       padding-top: 16px;
       border-top: 1px dashed var(--color-border);
     }
@@ -196,6 +199,9 @@
 
     <main class="checkin-main">
 
+      <!-- 시연 화면 영역 — 높이 고정으로 흔들림 방지 -->
+      <div class="demo-stage">
+
       <!-- 시연 화면 placeholder (사번 불러오기 전) -->
       <div class="demo-placeholder" id="demoPlaceholder">
         아래 컨트롤에서 사번을 불러오면<br>여기 시연 화면이 나타납니다
@@ -304,6 +310,8 @@
         </div>
       </section>
 
+      </div><!-- /demo-stage -->
+
       <!-- 시연 화면과 컨트롤 사이 구분 -->
       <div class="demo-spacer-bottom">↓ 시연 컨트롤</div>
 
@@ -342,8 +350,8 @@
 
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
   <script>window.__SKIP_AUTO_INIT = true;</script>
-  <script src="js/config.js?v=4.4"></script>
-  <script src="js/checkin.js?v=4.4"></script>
-  <script src="js/checkin-demo.js?v=4.4"></script>
+  <script src="js/config.js?v=4.5"></script>
+  <script src="js/checkin.js?v=4.5"></script>
+  <script src="js/checkin-demo.js?v=4.5"></script>
 </body>
 </html>
