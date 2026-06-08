@@ -441,9 +441,10 @@ body {
   font-size: 16px;
   font-weight: 600;
   color: var(--color-text);
-  line-height: 1.55;
+  line-height: 1.6;
   letter-spacing: -0.2px;
   min-height: 24px;
+  white-space: pre-line;
 }
 
 .ai-greet-text.typing::after {
@@ -1951,3 +1952,12 @@ body {
   background: var(--color-primary);
   opacity: 0.6;
 }
+
+/* 이벤트 버튼 라인 아이콘 */
+.event-icon-svg {
+  margin-bottom: 6px;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+.event-btn.event-primary .event-icon-svg { opacity: 1; }
+.event-btn.disabled .event-icon-svg { opacity: 0.4; }

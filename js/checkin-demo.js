@@ -47,6 +47,8 @@ async function loadDemoEmp() {
     successEl.style.display = 'none';
     successEl.classList.remove('show');
     document.getElementById('tokenSection').style.display = 'block';
+    var spacer = document.getElementById('demoSpacer');
+    if (spacer) spacer.style.display = 'block';
 
     // 헬퍼 호출 — checkin.js의 함수들 그대로 사용
     if (typeof renderWeekly === 'function' && status.weekly) renderWeekly(status.weekly);

@@ -278,6 +278,12 @@ function immediateFallback(empName, ctxOrType) {
   return prefix + '오늘도 시작해볼게요';
 }
 
+// 마침표 단위 줄바꿈 — AI 멘트 가독성
+function splitSentences(text) {
+  if (!text) return text;
+  return text.replace(/([.!?])\s+/g, '$1\n').trim();
+}
+
 async function fetchTokenGreeting(data) {
   if (!CONFIG.GAS_URL) return;
   var el = document.getElementById('tokenAiGreeting');
@@ -292,7 +298,7 @@ async function fetchTokenGreeting(data) {
     });
     var result = await res.json();
     if (result.success && result.greeting) {
-      typeText(el, result.greeting, 20);
+      typeText(el, splitSentences(result.greeting), 20);
     }
   } catch (e) {
     // fallback 유지
@@ -595,7 +601,7 @@ async function fetchGreeting(data) {
     });
     var result = await res.json();
     if (result.success && result.greeting) {
-      typeText(el, result.greeting, 20);
+      typeText(el, splitSentences(result.greeting), 20);
     }
   } catch (e) {
     // fallback 유지
