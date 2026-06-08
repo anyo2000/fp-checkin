@@ -1359,17 +1359,7 @@ body {
   color: #92400E;
 }
 
-/* 탭바 */
-.tab-bar {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 24px;
-  overflow-x: auto;
-  white-space: nowrap;
-  -webkit-overflow-scrolling: touch;
-  padding-bottom: 4px;
-}
-
+/* 일반 .tab-btn (변경/메일전송 등 라벨 보조 버튼) */
 .tab-btn {
   padding: 8px 16px;
   border: 1.5px solid var(--color-border);
@@ -1389,10 +1379,59 @@ body {
   border-color: var(--color-primary);
 }
 
-.tab-btn.active {
-  border-color: var(--color-primary);
+/* 탭바 — 언더라인 스타일 (.tab-bar 자손만 적용) */
+.tab-bar {
+  display: flex;
+  gap: 0;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--color-divider);
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tab-bar .tab-btn {
+  position: relative;
+  padding: 12px 18px;
+  border: none;
+  background: transparent;
+  border-radius: 0;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  font-family: inherit;
+  transition: color 0.15s;
+  flex-shrink: 0;
+  letter-spacing: -0.2px;
+}
+
+.tab-bar .tab-btn:hover {
+  color: var(--color-text);
+  background: transparent;
+  border-color: transparent;
+}
+
+.tab-bar .tab-btn.active {
+  color: var(--color-primary);
+  font-weight: 700;
+  background: transparent;
+}
+
+.tab-bar .tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 12px;
+  right: 12px;
+  height: 2.5px;
   background: var(--color-primary);
-  color: white;
+  border-radius: 2px 2px 0 0;
+}
+
+@media (max-width: 640px) {
+  .tab-bar .tab-btn { padding: 10px 12px; font-size: 13px; }
+  .tab-bar .tab-btn.active::after { left: 8px; right: 8px; }
 }
 
 @media (max-width: 640px) {
