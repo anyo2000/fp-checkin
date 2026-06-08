@@ -458,6 +458,22 @@ function shortDate(s) {
   return s;
 }
 
+// "2026-05-28" → "그제" / "3일 전" / 14일 넘으면 빈 문자열
+function daysAgoText(dateStr) {
+  if (!dateStr) return '';
+  var m = String(dateStr).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return '';
+  var d = new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
+  var today = new Date();
+  today.setHours(0, 0, 0, 0);
+  var diff = Math.round((today - d) / 86400000);
+  if (diff <= 0) return '오늘';
+  if (diff === 1) return '어제';
+  if (diff === 2) return '그제';
+  if (diff <= 14) return diff + '일 전';
+  return '';
+}
+
 // AI 브리핑 텍스트 → 문장 줄바꿈 + 숫자 강조
 function formatBriefingHtml(text) {
   if (!text) return '';
@@ -483,21 +499,39 @@ function openLongTermAbsentees() {
 }
 
 function openAbsenteeModal(title, subtitle, list, allowMemo) {
-  document.getElementById('absenteeModalTitle').textContent = title;
+  var count = list ? list.length : 0;
+  document.getElementById('absenteeModalTitle').innerHTML = escapeHtml(title) + ' <span class="modal-count">' + count + '명</span>';
   document.getElementById('absenteeModalSubtitle').textContent = subtitle;
   var html;
   if (!list || list.length === 0) {
     html = '<div class="absentee-empty">해당 없음</div>';
   } else {
     html = list.map(function (a) {
-      var lastSeen = a.lastSeen ? ('마지막 출근 ' + shortDate(a.lastSeen)) : '기록 없음';
+      // 출근율 컬러
+      var rateClass = 'rate-high';
+      if (a.usualRate < 60) rateClass = 'rate-low';
+      else if (a.usualRate < 80) rateClass = 'rate-mid';
+
+      // 마지막 출근 상대 시간
+      var rel = daysAgoText(a.lastSeen);
+      var lastSeenHtml = a.lastSeen
+        ? '<span class="meta-pill"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> ' + shortDate(a.lastSeen) + (rel ? ' <em>· ' + rel + '</em>' : '') + '</span>'
+        : '<span class="meta-pill meta-pill-muted">기록 없음</span>';
+
       var memoBtn = allowMemo
-        ? '<button class="btn-sm btn-edit" onclick="openMemoFor(\'' + a.empId + '\', \'' + escapeHtml(a.name) + '\')">사유 등록</button>'
+        ? '<button class="memo-btn" onclick="openMemoFor(\'' + a.empId + '\', \'' + escapeHtml(a.name) + '\')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> 사유 등록</button>'
         : '';
+
       return '<div class="absentee-item">' +
         '<div class="absentee-info">' +
-          '<div class="absentee-name">' + escapeHtml(a.name) + '</div>' +
-          '<div class="absentee-meta">사번 ' + escapeHtml(a.empId) + ' · 평소 출근율 ' + a.usualRate + '% · ' + lastSeen + '</div>' +
+          '<div class="absentee-name-row">' +
+            '<span class="absentee-name">' + escapeHtml(a.name) + '</span>' +
+            '<span class="absentee-empid">사번 ' + escapeHtml(a.empId) + '</span>' +
+          '</div>' +
+          '<div class="absentee-meta">' +
+            '<span class="rate-pill ' + rateClass + '">평소 ' + a.usualRate + '%</span>' +
+            lastSeenHtml +
+          '</div>' +
         '</div>' +
         '<div class="absentee-action">' + memoBtn + '</div>' +
       '</div>';

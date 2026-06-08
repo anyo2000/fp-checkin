@@ -315,24 +315,20 @@ function thisMonthKey() {
   return Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM');
 }
 
-// 날짜 범위(YYYY-MM-DD)에 따라 본 시트만 / 아카이브만 / 둘 다 자동 라우팅.
+// 날짜 범위(YYYY-MM-DD)에 따라 본 시트 / 아카이브 / 둘 다 자동 라우팅.
 // 헤더 제외한 데이터 행만 반환.
+// 본 시트는 항상 봄 (옛 달 데이터가 아직 아카이브 안 됐을 수 있음 → 안전성 우선).
+// 옛 달 조회는 아카이브도 같이 봄.
 function getLogsForDateRange(startDate, endDate) {
   var currentMonth = thisMonthKey();
   var startMonth = String(startDate || '').slice(0, 7);
-  var endMonth = String(endDate || startDate || '').slice(0, 7);
-
-  // 범위 미지정 시 본 시트만 (성능 우선 폴백)
-  var needMain = !startMonth || endMonth >= currentMonth || !endMonth;
   var needArchive = startMonth && startMonth < currentMonth;
 
   var rows = [];
-  if (needMain) {
-    var src = getLogSheet();
-    if (src && src.getLastRow() > 1) {
-      var mainData = src.getDataRange().getValues();
-      for (var i = 1; i < mainData.length; i++) rows.push(mainData[i]);
-    }
+  var src = getLogSheet();
+  if (src && src.getLastRow() > 1) {
+    var mainData = src.getDataRange().getValues();
+    for (var i = 1; i < mainData.length; i++) rows.push(mainData[i]);
   }
   if (needArchive) {
     var arch = getArchiveSheet(false);
