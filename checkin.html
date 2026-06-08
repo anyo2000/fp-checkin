@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FP 모닝 브리핑</title>
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
-  <link rel="stylesheet" href="css/style.css?v=3.2">
+  <link rel="stylesheet" href="css/style.css?v=3.5">
 </head>
 <body>
   <div class="checkin-page">
@@ -27,18 +27,26 @@
       <!-- 토큰 모드: 등록된 기기 -->
       <section id="tokenSection" class="screen" style="display:none;">
         <div class="greeting-block">
-          <p class="greeting-sub" id="tokenTitle">좋은 아침이에요</p>
           <h1 class="greeting-name"><span id="tokenEmpName">홍길동</span> <span class="greeting-suffix">님</span></h1>
           <p class="greeting-empid" id="tokenEmpId">사번 0000000</p>
         </div>
 
-        <!-- AI 인사말 카드 -->
+        <!-- 오늘 한마디 (LLM, 빈 상태 → 타이핑) -->
         <div class="ai-greet-card">
           <span class="ai-badge">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-            AI 모닝 인사
+            오늘 한마디
           </span>
-          <p class="ai-greet-text" id="tokenAiGreeting">오늘 인사말을 준비하고 있어요…</p>
+          <p class="ai-greet-text typing" id="tokenAiGreeting">&nbsp;</p>
+        </div>
+
+        <!-- streak 카드 (월 누적 / 연속 / 지난주 매일) -->
+        <div class="streak-card" id="streakCard" style="display:none;">
+          <div class="streak-icon" id="streakIcon">·</div>
+          <div class="streak-body">
+            <div class="streak-headline" id="streakHeadline">·</div>
+            <div class="streak-sub" id="streakSub">·</div>
+          </div>
         </div>
 
         <!-- 이번주 출근 -->
@@ -50,34 +58,21 @@
           <div class="weekly-days" id="weeklyDays"></div>
         </div>
 
-        <!-- 오늘 등록 -->
-        <h2 class="section-title">오늘 등록</h2>
-        <div class="event-grid">
+        <!-- 4개 이벤트 그리드 (컴팩트) -->
+        <div class="event-grid event-grid-compact">
           <button class="event-btn event-primary" data-event="출근" onclick="doEventCheckin('출근')">
-            <span class="event-icon">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
-            </span>
             <span class="event-name">출근</span>
             <span class="event-state" id="state-출근">&nbsp;</span>
           </button>
           <button class="event-btn" data-event="귀소" onclick="doEventCheckin('귀소')">
-            <span class="event-icon">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-            </span>
             <span class="event-name">귀소</span>
             <span class="event-state" id="state-귀소">&nbsp;</span>
           </button>
           <button class="event-btn" data-event="학습회" onclick="doEventCheckin('학습회')">
-            <span class="event-icon">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-            </span>
             <span class="event-name">학습회</span>
             <span class="event-state" id="state-학습회">&nbsp;</span>
           </button>
           <button class="event-btn" data-event="퇴근" onclick="doEventCheckin('퇴근')">
-            <span class="event-icon">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-            </span>
             <span class="event-name">퇴근</span>
             <span class="event-state" id="state-퇴근">&nbsp;</span>
           </button>
@@ -155,9 +150,9 @@
           <div class="ai-greet-card result-greet">
             <span class="ai-badge">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-              AI 한마디
+              오늘 한마디
             </span>
-            <p class="ai-greet-text" id="resultGreeting"></p>
+            <p class="ai-greet-text typing" id="resultGreeting">&nbsp;</p>
           </div>
         </div>
       </section>
@@ -177,8 +172,8 @@
     </main>
   </div>
 
-  <script src="js/config.js?v=3.2"></script>
-  <script src="js/totp.js?v=3.2"></script>
-  <script src="js/checkin.js?v=3.2"></script>
+  <script src="js/config.js?v=3.5"></script>
+  <script src="js/totp.js?v=3.5"></script>
+  <script src="js/checkin.js?v=3.5"></script>
 </body>
 </html>

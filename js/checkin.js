@@ -30,13 +30,6 @@
   }
 })();
 
-function timeBasedGreeting(hour) {
-  if (hour < 11) return '좋은 아침이에요';
-  if (hour < 14) return '점심 잘 챙겨드세요';
-  if (hour < 18) return '오후도 화이팅이에요';
-  return '오늘 하루도 수고 많으셨어요';
-}
-
 function renderWeeklyPlaceholder() {
   var weekdays = ['월', '화', '수', '목', '금'];
   var todayIdx = (new Date().getDay() - 1 + 7) % 7;
@@ -84,17 +77,14 @@ async function checkTokenStatus(token, empName, branchCode) {
       return;
     }
 
-    var titleEl = document.getElementById('tokenTitle');
-    if (titleEl) titleEl.textContent = timeBasedGreeting(status.hourKST != null ? status.hourKST : new Date().getHours());
-
     if (status.weekly) renderWeekly(status.weekly);
+    renderStreak(status);
 
     updateEventButton('출근', status);
     updateEventButton('귀소', status);
     updateEventButton('학습회', status);
     updateEventButton('퇴근', status);
 
-    // AI 인사말 fetch (출근 전이면 morning 톤, 출근 후면 다른 톤)
     var ctxType = status.today && status.today.checkin ? '진행 중' : '출근 전';
     fetchTokenGreeting({
       empName: empName,
@@ -107,8 +97,48 @@ async function checkTokenStatus(token, empName, branchCode) {
   }
 }
 
+function renderStreak(status) {
+  var card = document.getElementById('streakCard');
+  if (!card) return;
+  var monthDays = status.monthCheckinDays || 0;
+  var streak = status.streak || 0;
+  var lastWeekPerfect = !!status.lastWeekPerfect;
+
+  var headline = '';
+  var sub = '';
+  var icon = '';
+
+  if (lastWeekPerfect) {
+    headline = '지난주 5일 매일 출근';
+    sub = '이번 주도 이어가요';
+    icon = '🔥';
+  } else if (streak >= 3) {
+    headline = streak + '일 연속 출근 중';
+    sub = '이번달 누적 ' + monthDays + '일';
+    icon = '🔥';
+  } else if (monthDays >= 5) {
+    headline = '이번달 ' + monthDays + '일째 출근';
+    sub = '꾸준한 모습 좋아요';
+    icon = '✦';
+  } else if (monthDays > 0) {
+    headline = '이번달 ' + monthDays + '일 출근';
+    sub = '오늘도 함께해요';
+    icon = '·';
+  } else {
+    card.style.display = 'none';
+    return;
+  }
+
+  document.getElementById('streakIcon').textContent = icon;
+  document.getElementById('streakHeadline').textContent = headline;
+  document.getElementById('streakSub').textContent = sub;
+  card.style.display = 'flex';
+}
+
 async function fetchTokenGreeting(data) {
   if (!CONFIG.GAS_URL) return;
+  var el = document.getElementById('tokenAiGreeting');
+  if (!el) return;
   try {
     var res = await fetch(CONFIG.GAS_URL, {
       method: 'POST',
@@ -116,16 +146,15 @@ async function fetchTokenGreeting(data) {
       body: JSON.stringify({ action: 'greeting', ...data }),
     });
     var result = await res.json();
-    var el = document.getElementById('tokenAiGreeting');
-    if (!el) return;
     if (result.success && result.greeting) {
       typeText(el, result.greeting, 35);
     } else {
-      el.textContent = '오늘도 좋은 하루 만들어가요';
+      el.classList.remove('typing');
+      el.innerHTML = '&nbsp;';
     }
   } catch (e) {
-    var el = document.getElementById('tokenAiGreeting');
-    if (el) el.textContent = '오늘도 좋은 하루 만들어가요';
+    el.classList.remove('typing');
+    el.innerHTML = '&nbsp;';
   }
 }
 
@@ -388,12 +417,8 @@ function showSuccess(empId, serverResult, empName) {
 
   var greetingEl = document.getElementById('resultGreeting');
   if (greetingEl) {
-    var fallback;
-    if (type === '귀소') fallback = '오늘 활동 고생 많으셨어요.';
-    else if (type === '학습회') fallback = '학습 잘 다녀오세요.';
-    else if (type === '퇴근') fallback = '오늘 하루 수고 많으셨어요.';
-    else fallback = '오늘 하루도 화이팅이에요.';
-    greetingEl.textContent = fallback;
+    greetingEl.classList.add('typing');
+    greetingEl.innerHTML = '&nbsp;';
   }
 
   var section = document.getElementById('successSection');
@@ -411,6 +436,8 @@ function showSuccess(empId, serverResult, empName) {
 
 async function fetchGreeting(data) {
   if (!CONFIG.GAS_URL) return;
+  var el = document.getElementById('resultGreeting');
+  if (!el) return;
   try {
     var res = await fetch(CONFIG.GAS_URL, {
       method: 'POST',
@@ -419,11 +446,14 @@ async function fetchGreeting(data) {
     });
     var result = await res.json();
     if (result.success && result.greeting) {
-      var el = document.getElementById('resultGreeting');
-      if (el) typeText(el, result.greeting, 35);
+      typeText(el, result.greeting, 35);
+    } else {
+      el.classList.remove('typing');
+      el.innerHTML = '&nbsp;';
     }
   } catch (e) {
-    // 실패 시 기본 인사말 유지
+    el.classList.remove('typing');
+    el.innerHTML = '&nbsp;';
   }
 }
 

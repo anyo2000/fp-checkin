@@ -1104,6 +1104,57 @@ function handleCheckStatus(params) {
     if (node) branchName = node.name;
   }
 
+  // 이번달 누적·streak·지난주 매일 출근 — 한 번 더 넓게 fetch
+  var monthKey = today.slice(0, 7);
+  var startOfMonth = monthKey + '-01';
+  var rangeStart = dateAddDays(today, -35);
+  var rangeData = getLogsForDateRange(rangeStart, today);
+  var checkinDates = {};
+  for (var rd = 0; rd < rangeData.length; rd++) {
+    if (String(rangeData[rd][1]).trim() !== emp.empId) continue;
+    if (String(rangeData[rd][4]).trim() !== '출근') continue;
+    var rdate = toDateString(rangeData[rd][6]);
+    if (rdate) checkinDates[rdate] = true;
+  }
+
+  // 이번 달 누적 출근일
+  var monthCheckinDays = 0;
+  for (var cdt in checkinDates) {
+    if (cdt >= startOfMonth && cdt <= today) monthCheckinDays++;
+  }
+
+  // 연속 출근일 (영업일 기준, 오늘부터 거꾸로)
+  var streak = 0;
+  var cursor = new Date(now);
+  var sanity = 0;
+  while (sanity < 60) {
+    var cwd = cursor.getDay();
+    if (cwd >= 1 && cwd <= 5) {
+      var cds = Utilities.formatDate(cursor, 'Asia/Seoul', 'yyyy-MM-dd');
+      if (cds === today) {
+        if (checkinDates[cds]) { streak++; }
+        else { /* 오늘 미출근이면 어제부터 계속 카운트 */ }
+      } else {
+        if (checkinDates[cds]) streak++;
+        else break;
+      }
+    }
+    cursor.setDate(cursor.getDate() - 1);
+    sanity++;
+  }
+
+  // 지난주 월~금 매일 출근 여부
+  var lastWeekDates = [];
+  for (var lw = 0; lw < 5; lw++) {
+    var lwOffset = lw + 1 - dayOfWeek - 7; // 지난주 월~금
+    var lwdt = new Date(now.getTime() + lwOffset * 86400000);
+    lastWeekDates.push(Utilities.formatDate(lwdt, 'Asia/Seoul', 'yyyy-MM-dd'));
+  }
+  var lastWeekPerfect = true;
+  for (var lwi = 0; lwi < lastWeekDates.length; lwi++) {
+    if (!checkinDates[lastWeekDates[lwi]]) { lastWeekPerfect = false; break; }
+  }
+
   return jsonOut({
     // v1 호환 필드
     checkedIn: hasCheckin,
@@ -1126,6 +1177,9 @@ function handleCheckStatus(params) {
     hourKST: hourKST,
     weekly: weekly,
     branchName: branchName,
+    monthCheckinDays: monthCheckinDays,
+    streak: streak,
+    lastWeekPerfect: lastWeekPerfect,
   });
 }
 
