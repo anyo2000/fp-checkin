@@ -546,8 +546,9 @@ function showSuccess(empId, serverResult, empName) {
   document.getElementById('loadingSection').style.display = 'none';
 
   var now = new Date();
-  var timeStr =
-    String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+  var timeStr = (serverResult && serverResult.time)
+    ? String(serverResult.time).slice(0, 5)
+    : (String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0'));
 
   var type = serverResult && serverResult.type ? serverResult.type : '출근';
   var headerText;

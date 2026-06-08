@@ -4,16 +4,28 @@ var _demoStatus = null;     // 사번 불러왔을 때 GAS가 준 진짜 status
 var _demoScenario = 'real'; // 시나리오 강제 키
 var _demoEmpName = '';
 var _demoBranchName = '';
+var _demoCustomTime = '08:32'; // 불러오기 누를 때 잠금되는 시연 시각
 
 function setScenario(btn) {
   document.querySelectorAll('.demo-scenario').forEach(function (b) { b.classList.remove('active'); });
   btn.classList.add('active');
   _demoScenario = btn.getAttribute('data-sc');
+
+  // 시나리오 선택 즉시 화면 미리보기 — progress·streak·weekly 갱신
+  if (!_demoStatus) return;
+  var preview = _demoScenario === 'real'
+    ? _demoStatus
+    : applyScenario(_demoScenario, _demoStatus);
+  if (typeof renderWeekly === 'function' && preview.weekly) renderWeekly(preview.weekly);
+  if (typeof renderProgress === 'function') renderProgress(preview);
+  if (typeof renderStreak === 'function') renderStreak(preview);
 }
 
 async function loadDemoEmp() {
   var empId = document.getElementById('demoEmpId').value.trim();
   if (!empId) { alert('사번을 입력하세요'); return; }
+  var timeInput = document.getElementById('demoTime').value || '08:32';
+  _demoCustomTime = timeInput.slice(0, 5);
   var btn = document.getElementById('demoLoadBtn');
   btn.disabled = true;
   btn.textContent = '불러오는 중...';
@@ -62,7 +74,7 @@ async function loadDemoEmp() {
     }
     if (typeof bindEventBtnEffects === 'function') bindEventBtnEffects();
 
-    // AI 한마디 (진짜 호출, read-only)
+    // AI 한마디 (진짜 호출, read-only) — 시연 시각 적용
     var ctxType = status.today && status.today.checkin ? '진행 중' : '출근 전';
     if (typeof fetchTokenGreeting === 'function') {
       fetchTokenGreeting({
@@ -70,7 +82,7 @@ async function loadDemoEmp() {
         empId: empId,
         branchName: _demoBranchName,
         type: ctxType,
-        time: new Date().toTimeString().slice(0, 5),
+        time: _demoCustomTime,
       });
     }
   } catch (e) {
@@ -83,59 +95,43 @@ async function loadDemoEmp() {
 
 // 시나리오를 _statusBeforeCheckin에 강제 적용
 function applyScenario(scenario, baseStatus) {
-  // baseStatus 복사
   var s = JSON.parse(JSON.stringify(baseStatus || {}));
-  // 강제로 오늘 미출근 상태로 (출근 누를 수 있게)
   s.today = { checkin: false, return: false, learning: false, leave: false };
 
   if (scenario === 'real') {
     // 진짜 상태 그대로 (오늘 미출근으로만 강제)
-  } else if (scenario === 'month5') {
-    s.monthCheckinDays = 4;  // +1 = 5
-    s.streak = 2;
-  } else if (scenario === 'month10') {
-    s.monthCheckinDays = 9;
-    s.streak = 4;
-  } else if (scenario === 'month20huge') {
-    s.monthCheckinDays = 19;
-    s.streak = 8;
-  } else if (scenario === 'streak3') {
-    s.monthCheckinDays = 6;
-    s.streak = 2;  // +1 = 3
-  } else if (scenario === 'streak7') {
-    s.monthCheckinDays = 10;
-    s.streak = 6;  // +1 = 7
-  } else if (scenario === 'streak30huge') {
-    s.monthCheckinDays = 18;
-    s.streak = 29;  // +1 = 30
   } else if (scenario === 'firstOfMonth') {
-    s.monthCheckinDays = 0;
-    s.streak = 0;
+    s.monthCheckinDays = 0; s.streak = 0;
+  } else if (scenario === 'month5') {
+    s.monthCheckinDays = 4; s.streak = 0;
+  } else if (scenario === 'month10') {
+    s.monthCheckinDays = 9; s.streak = 0;
+  } else if (scenario === 'month20huge') {
+    s.monthCheckinDays = 19; s.streak = 0;
+  } else if (scenario === 'streak3') {
+    s.monthCheckinDays = 7; s.streak = 2;   // 출근 → streak 3
+  } else if (scenario === 'streak7') {
+    s.monthCheckinDays = 11; s.streak = 6;  // 출근 → streak 7
+  } else if (scenario === 'streak30huge') {
+    s.monthCheckinDays = 21; s.streak = 29; // 출근 → streak 30
   } else if (scenario === 'late') {
-    // 평범한 상태이지만 결과 화면에서 시각·status 강제
-    s.monthCheckinDays = baseStatus.monthCheckinDays || 5;
-    s.streak = baseStatus.streak || 2;
+    // monthDays/streak는 진짜 상태 유지, 시각만 09:15로 강제 (buildFakeResult에서 처리)
   } else if (scenario === 'newbie') {
-    s.monthCheckinDays = 0;
-    s.streak = 0;
-    s.lastWeekPerfect = false;
+    s.monthCheckinDays = 0; s.streak = 0; s.lastWeekPerfect = false;
   }
   return s;
 }
 
-// 시나리오별 결과 화면 입력 생성
+// 시나리오별 결과 화면 입력 생성 — 시연 시각 사용
 function buildFakeResult(scenario, eventType) {
-  var now = new Date();
-  var hh = String(now.getHours()).padStart(2, '0');
-  var mm = String(now.getMinutes()).padStart(2, '0');
-  var timeStr = hh + ':' + mm;
+  var timeStr = _demoCustomTime || '08:32';
   var status = 'normal';
 
   if (scenario === 'late') {
     timeStr = '09:15';
     status = 'late';
   } else if (eventType === '출근') {
-    var hour = parseInt(hh);
+    var hour = parseInt(timeStr.split(':')[0], 10);
     if (hour < 9) status = 'normal';
     else if (hour < 10) status = 'late';
     else status = 'working';

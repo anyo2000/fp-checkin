@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FP 모닝 브리핑 — 데모</title>
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
-  <link rel="stylesheet" href="css/style.css?v=4.0">
+  <link rel="stylesheet" href="css/style.css?v=4.1">
   <style>
     .demo-banner {
       background: #FEF3F2;
@@ -82,6 +82,33 @@
       background: var(--color-text-muted);
       cursor: not-allowed;
     }
+    .demo-time-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      padding: 8px 10px;
+      background: var(--color-bg);
+      border-radius: 8px;
+    }
+    .demo-time-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--color-text-secondary);
+    }
+    .demo-time-row input[type="time"] {
+      padding: 6px 10px;
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: inherit;
+      background: white;
+    }
+    .demo-time-hint {
+      font-size: 11px;
+      color: var(--color-text-muted);
+      margin-left: auto;
+    }
     .demo-scenarios {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -135,10 +162,15 @@
 
       <!-- 데모 컨트롤 -->
       <div class="demo-controls">
-        <h3>1) 시연할 사번 입력</h3>
+        <h3>1) 시연할 사번 + 시각</h3>
         <div class="demo-empid-row">
           <input type="tel" id="demoEmpId" placeholder="0000000" maxlength="10" inputmode="numeric">
           <button id="demoLoadBtn" onclick="loadDemoEmp()">불러오기</button>
+        </div>
+        <div class="demo-time-row">
+          <label class="demo-time-label">시연 시각</label>
+          <input type="time" id="demoTime" value="08:32">
+          <span class="demo-time-hint">불러오기 누를 때 적용</span>
         </div>
         <div class="demo-empinfo" id="demoEmpInfo" style="display:none;"></div>
 
@@ -261,8 +293,8 @@
 
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
   <script>window.__SKIP_AUTO_INIT = true;</script>
-  <script src="js/config.js?v=4.0"></script>
-  <script src="js/checkin.js?v=4.0"></script>
-  <script src="js/checkin-demo.js?v=4.0"></script>
+  <script src="js/config.js?v=4.1"></script>
+  <script src="js/checkin.js?v=4.1"></script>
+  <script src="js/checkin-demo.js?v=4.1"></script>
 </body>
 </html>
